@@ -1,0 +1,43 @@
+/* Inter Variable (the official Vue brand face), latin subset only: enough for latin
+   text inside materials, and keeps export-time font inlining light */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')
+    format('woff2-variations');
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  background: #1c202b;
+  font-family: 'Inter Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+/* When printing, keep only the material itself */
+@media print {
+  .topbar,
+  .export-bar,
+  .panel,
+  .fab {
+    display: none !important;
+  }
+  .stage {
+    padding: 0 !important;
+  }
+  body {
+    background: none !important;
+  }
+}

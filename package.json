@@ -1,0 +1,36 @@
+{
+  "name": "create-vue-design-lab",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Scaffold a Vue-flavored design lab where designers learn HTML/CSS/Vue by typesetting real poster materials.",
+  "license": "MIT",
+  "bin": {
+    "create-vue-design-lab": "index.mjs"
+  },
+  "files": [
+    "index.mjs",
+    "template",
+    "!template/dist",
+    "!template/node_modules",
+    "!template/*.tsbuildinfo"
+  ],
+  "keywords": [
+    "vue",
+    "create",
+    "scaffold",
+    "design",
+    "material",
+    "poster",
+    "typesetting",
+    "vibe-coding"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.24.0",
+  "scripts": {
+    "dev": "pnpm -C template dev",
+    "build": "pnpm -C template build",
+    "prepublishOnly": "pnpm -C template build"
+  }
+}
