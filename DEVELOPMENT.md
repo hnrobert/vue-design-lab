@@ -21,7 +21,7 @@ Maintainer guide for the `create-vue-design-lab` repository. User-facing docs li
     ├── README.md          # the manual scaffolded users read
     ├── pnpm-workspace.yaml  # pnpm config for standalone installs (allowBuilds)
     └── src/
-        ├── pages/         # material pages: one .vue per poster, auto-routed
+        ├── pages/         # material pages: one .vue per format, auto-routed, sorted alphabetically
         ├── views/Home.vue # landing page (auto-lists material pages)
         ├── components/    # TokenPanel / ExportBar / VueLogo
         ├── export/        # PNG / PDF / print export

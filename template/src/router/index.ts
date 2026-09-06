@@ -8,14 +8,17 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
  */
 const pageModules = import.meta.glob('../pages/*.vue')
 
-const autoRoutes: RouteRecordRaw[] = Object.entries(pageModules).map(([file, loader]) => {
-  const name = /([\w-]+)\.vue$/.exec(file)![1]
-  return {
-    path: `/${name}`,
-    name,
-    component: loader as () => Promise<typeof import('*.vue')>,
-  }
-})
+const autoRoutes: RouteRecordRaw[] = Object.entries(pageModules)
+  .map(([file, loader]) => {
+    const name = /([\w-]+)\.vue$/.exec(file)![1]
+    return {
+      path: `/${name}`,
+      name,
+      component: loader as () => Promise<typeof import('*.vue')>,
+    }
+  })
+  // Sort alphabetically so the nav and home grid read as a size catalog
+  .sort((a, b) => String(a.path).localeCompare(String(b.path)))
 
 export default createRouter({
   history: createWebHistory(),

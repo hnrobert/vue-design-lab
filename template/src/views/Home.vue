@@ -30,9 +30,14 @@ const router = useRouter()
 const routes = computed(() => router.getRoutes().filter((r) => r.name !== 'home'))
 
 const hints: Record<string, string> = {
-  PosterRollup: 'Brand rollup 85x200cm - 850x2000px',
-  PosterA4: 'Product poster A4 - 794x1123px',
+  CardBusiness: 'Business card 90x54mm - 340x204px',
   CardSquare: 'Social square - 1080x1080px',
+  PosterA4: 'Product poster A4 - 794x1123px',
+  PosterA5: 'Flyer A5 - 559x794px',
+  PosterRollup: 'Brand rollup 85x200cm - 850x2000px',
+  SlideWide: 'Slide 16:9 - 1920x1080px',
+  SocialLandscape: 'Link card - 1200x630px',
+  SocialStory: 'Story / Reels - 1080x1920px',
 }
 </script>
 

@@ -19,8 +19,9 @@ pnpm install
 pnpm dev
 ```
 
-Open <http://localhost:5173> — three sample materials (brand rollup / product poster /
-social square) are already inside.
+Open <http://localhost:5173> — eight sample materials are already inside, one size per
+format: business card, social square, A4/A5 posters, rollup banner, 16:9 slide, link
+card, and vertical story. Sorted alphabetically, they read as a size catalog.
 
 ## The three conventions
 
