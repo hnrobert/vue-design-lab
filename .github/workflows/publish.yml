@@ -1,0 +1,84 @@
+name: Publish
+
+# Publish create-vue-design-lab to npm when a GitHub Release is published.
+# Auth is OIDC trusted publishing - no tokens anywhere.
+#
+# Two-phase setup (once per package):
+#   Phase 1: publish locally once (`npm publish`) so the package exists, then
+#            on npmjs.com -> package -> Settings -> Trusted Publishers, bind
+#            this repository with workflow file `publish.yml`.
+#   Phase 2: every release publishes with GitHub's OIDC token alone, with
+#            provenance attestation.
+#
+# The release tag is the source of truth for the version: it is stamped into
+# package.json at publish time, so no manual version syncing is needed.
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+  id-token: write # OIDC publish + npm provenance
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false # never interrupt a publish mid-flight
+
+jobs:
+  publish:
+    name: Publish to npm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Reads the pnpm version from package.json `packageManager` -
+      # don't pass `version` here, it conflicts and throws ERR_PNPM_BAD_PM_VERSION.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Stamp the release tag (v1.2.3 -> 1.2.3) into package.json. No git ops:
+      # the tag and the release already exist. Skipped when already in sync.
+      - name: Stamp version from release tag
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          CURRENT=$(node -p "require('./package.json').version")
+          if [ "$CURRENT" != "$VERSION" ]; then
+            npm version "$VERSION" --no-git-tag-version
+          fi
+
+      # Test pages are git-ignored locally (.git/info/exclude) but npm packs by
+      # the files allowlist, not git rules - never ship them.
+      - name: Package hygiene gate
+        run: |
+          set -euo pipefail
+          extra=$(ls -A template/src/pages | grep -v '^\.gitkeep$' || true)
+          if [ -n "$extra" ]; then
+            echo "::error::template/src/pages must be empty before publishing (found: $extra)"
+            exit 1
+          fi
+
+      # Scaffold a copy and build it: proves the shipped template is self-sufficient
+      # (dependencies, pnpm allowBuilds, type-checking all ship correctly).
+      - name: Scaffolder e2e
+        run: |
+          set -euo pipefail
+          node index.mjs /tmp/lab-e2e
+          cd /tmp/lab-e2e && pnpm install && pnpm build
+
+      # prepublishOnly builds the template first, so the tarball is always fresh.
+      - name: Publish
+        run: npm publish --access public --provenance

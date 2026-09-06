@@ -1,0 +1,60 @@
+name: CI
+
+# Docs-only changes never build. Real inputs only - plus the workflow file
+# itself, so workflow edits stay covered.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'template/**'
+      - '.github/workflows/ci.yml'
+  pull_request:
+    paths:
+      - 'index.mjs'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'template/**'
+      - '.github/workflows/ci.yml'
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  # cancel stale PR runs, never a main push
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  verify:
+    name: Build + scaffolder e2e
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      # Reads the pnpm version from package.json `packageManager` -
+      # don't pass `version` here, it conflicts and throws ERR_PNPM_BAD_PM_VERSION.
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build template (vue-tsc + vite)
+        run: pnpm build
+
+      # The same gate the publish workflow runs: scaffold a fresh copy and
+      # build it there. Proves the template is self-sufficient.
+      - name: Scaffolder e2e
+        run: |
+          set -euo pipefail
+          node index.mjs /tmp/lab-e2e
+          cd /tmp/lab-e2e && pnpm install && pnpm build

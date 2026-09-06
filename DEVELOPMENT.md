@@ -126,12 +126,22 @@ in `package.json` enforces this with `!` exclusions; check it after any layout c
 
 ## Publishing
 
-```bash
-npm publish
-```
+Publishing is release-driven: draft a GitHub Release with a tag like `v0.1.1`, and
+`.github/workflows/publish.yml` stamps the tag into `package.json`, runs the hygiene
+gate plus the scaffolder e2e, and publishes to npm via **OIDC trusted publishing** —
+no tokens, no secrets, with provenance attestation. CI (`.github/workflows/ci.yml`)
+gates every push/PR with the same build + e2e.
 
-Bump `version` in the root `package.json` first. After publishing,
-`npm create vue-design-lab <dir>` serves the new version.
+First-time setup (once per package, before the workflow can publish):
+
+1. `npm publish` locally once so `create-vue-design-lab` exists under the account
+   (bootstrap `0.1.0`; start releasing from `v0.1.1` to avoid the collision)
+2. npmjs.com -> package -> Settings -> **Trusted Publishers** -> bind this repository
+   with workflow file `publish.yml`
+
+Until step 2 is done, the workflow's publish step fails with a 403 — that is expected
+for the very first release. After publishing, `npm create vue-design-lab <dir>`
+serves the new version.
 
 ## Gotchas learned the hard way
 

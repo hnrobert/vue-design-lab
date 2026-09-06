@@ -1,4 +1,4 @@
 {
   "files.autoGuessEncoding": false,
-  "cSpell.words": ["diffable", "esbuild", "fontsource", "gesturechange", "gesturestart", "Gotchas", "inkjet", "jspdf", "rgba", "scaffolder", "topbar", "trackpad", "Trackpad", "UNNC", "unzoomed", "wght", "wordmark", "zoomable"]
+  "cSpell.words": ["diffable", "esbuild", "fontsource", "gesturechange", "gesturestart", "Gotchas", "inkjet", "jspdf", "npmjs", "pipefail", "rgba", "scaffolder", "Scaffolder", "topbar", "trackpad", "Trackpad", "UNNC", "unzoomed", "vite", "wght", "wordmark", "zoomable"]
 }
