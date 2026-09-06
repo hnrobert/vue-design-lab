@@ -19,15 +19,15 @@ pnpm install
 pnpm dev
 ```
 
-Open <http://localhost:5173> — eight sample materials are already inside, one size per
-format: business card, social square, A4/A5 posters, rollup banner, 16:9 slide, link
-card, and vertical story. Sorted alphabetically, they read as a size catalog.
+Open <http://localhost:5173> — your material list starts empty; the Templates page has
+eight branded starters (business card, A4/A5 posters, rollup banner, 16:9 slide, social
+square / link card / story, plus a blank canvas) ready to materialize into real files.
 
 ## The three conventions
 
 | Convention | How |
 | --- | --- |
-| Add a material | Create a `.vue` file under `src/pages/`; the filename becomes the route, no registration needed |
+| Add a material | On the Templates page: pick a starter, set size in px or mm + DPI, choose single file or folder — the .vue file is written into `src/pages/` for real |
 | Declare export size | On the page root element: `data-export data-export-w="850" data-export-h="2000"` (px) |
 | Tune design tokens | Edit `--c-*` variables in the top-right panel; live preview, writes back to `src/styles/tokens.css` |
 

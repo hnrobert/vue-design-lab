@@ -6,18 +6,27 @@
         <h1>Vue <span class="grad">Design Lab</span></h1>
       </div>
       <p class="desc">
-        A poster workbench for designers. Every .vue file in src/pages/ becomes a route;
-        declare data-export-w / data-export-h on the root element to enable export; the
-        top-right panel edits design tokens and writes them back to tokens.css.
+        Your material workbench. Everything under src/pages/ is a live page - create
+        from a template below, or drop a .vue file in. Declare data-export-w/h to
+        enable export; the top-right panel writes tokens back to source.
       </p>
-      <code class="install">pnpm create vue-design-lab</code>
+      <div class="actions">
+        <RouterLink class="cta" to="/templates">New material</RouterLink>
+        <code class="install">pnpm create vue-design-lab</code>
+      </div>
     </header>
-    <div class="grid">
+
+    <div v-if="routes.length" class="grid">
       <RouterLink v-for="r in routes" :key="r.path" :to="r.path" class="item">
         <b>{{ r.name }}</b>
-        <span>{{ hints[r.name as string] ?? 'Custom page' }}</span>
+        <span>Custom page</span>
       </RouterLink>
     </div>
+    <RouterLink v-else class="empty" to="/templates">
+      <span class="plus">+</span>
+      <b>No materials yet</b>
+      <span>Pick a template, set the canvas - the .vue file lands in src/pages/ for real.</span>
+    </RouterLink>
   </div>
 </template>
 
@@ -27,18 +36,10 @@ import { useRouter } from 'vue-router'
 import VueLogo from '@/components/VueLogo.vue'
 
 const router = useRouter()
-const routes = computed(() => router.getRoutes().filter((r) => r.name !== 'home'))
-
-const hints: Record<string, string> = {
-  CardBusiness: 'Business card 90x54mm - 340x204px',
-  CardSquare: 'Social square - 1080x1080px',
-  PosterA4: 'Product poster A4 - 794x1123px',
-  PosterA5: 'Flyer A5 - 559x794px',
-  PosterRollup: 'Brand rollup 85x200cm - 850x2000px',
-  SlideWide: 'Slide 16:9 - 1920x1080px',
-  SocialLandscape: 'Link card - 1200x630px',
-  SocialStory: 'Story / Reels - 1080x1920px',
-}
+// Only the user's own pages (src/pages/), not the shell routes
+const routes = computed(() =>
+  router.getRoutes().filter((r) => r.name && r.name !== 'home' && r.name !== 'Templates'),
+)
 </script>
 
 <style scoped>
@@ -73,6 +74,24 @@ h1 {
   line-height: 1.8;
   margin-bottom: 18px;
 }
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.cta {
+  background: var(--c-accent);
+  color: var(--c-bg);
+  font-weight: 600;
+  font-size: 14px;
+  border-radius: 8px;
+  padding: 8px 16px;
+  text-decoration: none;
+}
+.cta:hover {
+  filter: brightness(1.08);
+}
 .install {
   display: inline-block;
   background: var(--c-surface);
@@ -105,5 +124,36 @@ h1 {
 .item span {
   color: var(--c-text-muted);
   font-size: 13px;
+}
+/* Composed empty state: tells you exactly how to populate it */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px dashed #3a4152;
+  border-radius: var(--radius-card);
+  padding: 36px 32px;
+  text-decoration: none;
+  color: var(--c-text);
+  transition: border-color 0.2s;
+}
+.empty:hover {
+  border-color: var(--c-accent);
+}
+.plus {
+  font-size: 34px;
+  font-weight: 300;
+  color: var(--c-accent);
+  line-height: 1;
+}
+.empty b {
+  color: #fff;
+  font-size: 17px;
+}
+.empty span {
+  color: var(--c-text-muted);
+  font-size: 13px;
+  line-height: 1.6;
 }
 </style>

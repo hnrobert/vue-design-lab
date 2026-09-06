@@ -12,18 +12,31 @@ pnpm dev
 
 ## How to add a new material
 
-1. Create `src/pages/MyPoster.vue` under `src/pages/` (filename = route name)
-1. Declare the canvas size on the root element:
+The easiest way is the **Templates** page (top nav): pick a starter or a blank canvas,
+set width/height in px or mm (mm takes a DPI), choose the file shape, and hit Create.
+The workbench writes a real .vue file into `src/pages/` and routes it — no registration,
+the file is yours to edit from there on.
 
-   ```vue
-   <div class="poster" data-export data-export-w="850" data-export-h="2000">
-   ```
+Materials live under `src/pages/` in either shape:
 
-1. Typeset with the tokens from `src/styles/tokens.css` (`var(--c-accent)` and friends)
-   instead of hard-coded colors — that is what lets the token panel drive your page
+```text
+src/pages/MyPoster.vue           # single file -> /MyPoster
+src/pages/MyPoster/index.vue     # folder      -> /MyPoster
+```
 
-The page shows up on the home grid and in the top navigation automatically; the bottom
-export bar produces PNG (2x), PDF, or browser print.
+Or just create one by hand with the canvas declared on the root element:
+
+```vue
+<div class="poster" data-export data-export-w="850" data-export-h="2000">
+```
+
+The starter formats themselves sit in `src/templates/` and are never routed — they only
+appear as previews on the Templates page.
+
+Whatever route you take: typeset with the tokens from `src/styles/tokens.css`
+(`var(--c-accent)` and friends) instead of hard-coded colors — that is what lets the
+token panel drive your page. The bottom export bar produces PNG (2x), PDF, or browser
+print.
 
 ## Canvas gestures
 

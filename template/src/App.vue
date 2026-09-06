@@ -9,6 +9,7 @@
         <RouterLink v-for="r in materialRoutes" :key="r.name" :to="r.path">
           {{ r.name }}
         </RouterLink>
+        <RouterLink to="/templates">Templates</RouterLink>
       </nav>
       <div class="spacer" />
       <TokenPanel />
@@ -20,7 +21,7 @@
       </StageZoom>
     </main>
 
-    <ExportBar v-if="route.name !== 'home'" />
+    <ExportBar v-if="route.name !== 'home' && route.name !== 'Templates'" />
   </div>
 </template>
 
@@ -35,9 +36,11 @@ import VueLogo from './components/VueLogo.vue'
 const route = useRoute()
 const router = useRouter()
 
-// Auto-discovered material pages (every route except home)
+// Auto-discovered user material pages (routes from src/pages/, not the shell pages)
 const materialRoutes = computed(() =>
-  router.getRoutes().filter((r) => r.name && r.name !== 'home'),
+  router
+    .getRoutes()
+    .filter((r) => r.name && r.name !== 'home' && r.name !== 'Templates'),
 )
 </script>
 

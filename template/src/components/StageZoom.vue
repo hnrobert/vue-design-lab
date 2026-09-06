@@ -2,7 +2,7 @@
   <div
     ref="viewportEl"
     class="viewport"
-    :class="{ dragging }"
+    :class="{ dragging, flow: !zoomable }"
     @wheel="onWheel"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
@@ -10,11 +10,11 @@
     @pointercancel="onPointerUp"
     @click.capture="onClickCapture"
   >
-    <div class="zoom-canvas" :style="canvasStyle">
+    <div class="zoom-canvas" :class="{ flow: !zoomable }" :style="canvasStyle">
       <slot />
     </div>
   </div>
-  <div class="zoom-bar">
+  <div v-if="zoomable" class="zoom-bar">
     <button title="Zoom out" @click="zoomStep(1 / 1.2)">−</button>
     <button class="pct" title="Reset to 100%" @click="zoomToScale(1)">{{ pct }}</button>
     <button title="Zoom in" @click="zoomStep(1.2)">+</button>
@@ -27,16 +27,19 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 
 /**
- * Pan/zoom viewport for the material stage.
+ * The stage viewport, with two modes:
  *
- * Gestures:
- * - trackpad pinch (wheel + ctrlKey) and ctrl/cmd + wheel -> zoom at the focal point
- * - two-finger scroll -> pan
- * - drag / one-finger touch -> pan; two-pointer touch -> pinch zoom
- * - Safari desktop also fires non-standard gesturestart/gesturechange
+ * - Material pages (fixed canvases): pan/zoom surface.
+ *   Trackpad pinch (wheel + ctrlKey) and ctrl/cmd + wheel zoom at the focal
+ *   point; two-finger scroll, drag, or one-finger touch pan; two-pointer
+ *   touch pinches. Safari desktop gesturestart/gesturechange covered too.
  *
- * The transform lives on the .zoom-canvas wrapper, never on the material itself,
- * so PNG/PDF export (which reads the [data-export] node) is unaffected.
+ * - Workbench pages (home, templates): a normal document flow - scrollable,
+ *   fully interactive. Pointer capture and touch-action must stay off here,
+ *   otherwise buttons and inputs stop receiving clicks.
+ *
+ * The transform lives on the .zoom-canvas wrapper, never on the material
+ * itself, so PNG/PDF export (which reads the [data-export] node) is unaffected.
  */
 const MIN_SCALE = 0.1
 const MAX_SCALE = 3
@@ -50,9 +53,14 @@ const ty = ref(0)
 const dragging = ref(false)
 const userZoomed = ref(false)
 
-const canvasStyle = computed(() => ({
-  transform: `translate(${tx.value}px, ${ty.value}px) scale(${scale.value})`,
-}))
+/** Fixed-canvas material pages get the pan/zoom surface; shell pages do not */
+const zoomable = computed(() => route.name !== 'home' && route.name !== 'Templates')
+
+const canvasStyle = computed(() =>
+  zoomable.value
+    ? { transform: `translate(${tx.value}px, ${ty.value}px) scale(${scale.value})` }
+    : undefined,
+)
 const pct = computed(() => `${Math.round(scale.value * 100)}%`)
 
 /** Natural (unzoomed) size of the slotted content */
@@ -90,10 +98,10 @@ function zoomToScale(next: number, cx?: number, cy?: number) {
 
 const zoomStep = (factor: number) => zoomToScale(scale.value * factor)
 
-/** Fit the whole material into view with a margin; the initial state on every page */
+/** Fit the whole material into view with a margin; the initial state on every material page */
 function fit() {
   const vp = viewportEl.value
-  if (!vp) return
+  if (!vp || !zoomable.value) return
   const { w, h } = contentSize()
   if (!w || !h) return
   const s = Math.min((vp.clientWidth - FIT_MARGIN) / w, (vp.clientHeight - FIT_MARGIN) / h, 1)
@@ -105,6 +113,7 @@ function fit() {
 
 // ---------- wheel: pinch (ctrl/meta) zooms, plain scroll pans ----------
 function onWheel(e: WheelEvent) {
+  if (!zoomable.value) return
   e.preventDefault()
   if (e.ctrlKey || e.metaKey) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
@@ -129,6 +138,7 @@ const pinchDist = () => {
 }
 
 function onPointerDown(e: PointerEvent) {
+  if (!zoomable.value) return
   ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
   if (pointers.size === 2) {
@@ -181,16 +191,19 @@ function onClickCapture(e: MouseEvent) {
 // ---------- Safari desktop pinch (non-standard gesture events) ----------
 let gestureBase = 1
 const onGestureStart = (e: Event) => {
+  if (!zoomable.value) return
   e.preventDefault()
   gestureBase = scale.value
 }
 const onGestureChange = (e: Event) => {
+  if (!zoomable.value) return
   e.preventDefault()
   zoomToScale(gestureBase * (e as unknown as { scale: number }).scale)
 }
 
 // ---------- lifecycle ----------
 function onResize() {
+  if (!zoomable.value) return
   if (userZoomed.value) clampPan()
   else fit()
 }
@@ -204,7 +217,7 @@ onMounted(async () => {
   fit()
 })
 
-// Every page change re-fits: materials have very different canvas sizes
+// Entering a material page re-fits: canvases differ wildly in size
 watch(
   () => route.fullPath,
   async () => {
@@ -232,12 +245,25 @@ onBeforeUnmount(() => {
 .viewport.dragging {
   cursor: grabbing;
 }
+/* Flow mode (home / templates): a normal, scrollable, interactive page */
+.viewport.flow {
+  overflow-y: auto;
+  cursor: default;
+  touch-action: auto;
+  padding: 28px 16px 96px;
+}
 .zoom-canvas {
   position: absolute;
   left: 0;
   top: 0;
   width: max-content;
   transform-origin: 0 0;
+}
+.zoom-canvas.flow {
+  position: static;
+  width: max-content;
+  max-width: 100%;
+  margin: 0 auto;
 }
 .zoom-bar {
   position: fixed;

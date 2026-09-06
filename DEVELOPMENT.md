@@ -21,11 +21,12 @@ Maintainer guide for the `create-vue-design-lab` repository. User-facing docs li
     ├── README.md          # the manual scaffolded users read
     ├── pnpm-workspace.yaml  # pnpm config for standalone installs (allowBuilds)
     └── src/
-        ├── pages/         # material pages: one .vue per format, auto-routed, sorted alphabetically
-        ├── views/Home.vue # landing page (auto-lists material pages)
-        ├── components/    # StageZoom (pan/zoom viewport) / TokenPanel / ExportBar / VueLogo
+        ├── pages/         # user work files, auto-routed: Name.vue or Name/index.vue
+        ├── templates/     # starter formats - previews only on /templates, never routed
+        ├── views/         # Home (material list) + Templates (gallery + create form)
+        ├── components/    # StageZoom / TemplatePreview / TokenPanel / ExportBar / VueLogo
         ├── export/        # PNG / PDF / print export
-        ├── router/        # auto routing via import.meta.glob
+        ├── router/        # auto routing via import.meta.glob (two page shapes)
         └── styles/        # tokens.css (auto-written block) + base.css
 ```
 
@@ -43,8 +44,17 @@ All three commands run at the repo root and proxy into `template/`.
 
 ### Auto routing
 
-`src/router/index.ts` globs `src/pages/*.vue` with `import.meta.glob`; filename =
-route name. No registration anywhere — dropping a file in is the whole workflow.
+`src/router/index.ts` globs `src/pages/` with `import.meta.glob` in two shapes —
+`pages/*.vue` (single file) and `pages/*/index.vue` (folder) — plus the static `/` and
+`/templates` routes. Route name = filename or folder name; routes sort alphabetically.
+No registration anywhere — dropping a file in is the whole workflow. The starters in
+`src/templates/` are deliberately outside the glob: they only render as scaled previews
+inside the Templates gallery.
+
+Each starter declares its canonical size in `src/templates/meta.ts`: physical formats
+(cards, A4/A5, rollup) speak mm at a design DPI, screen formats speak px. The shipped
+files are 1:1 with their metadata — creating with the prefilled defaults reproduces the
+template canvas exactly (e.g. rollup 850x2000mm @72dpi = 2409x5669px).
 
 ### Export protocol
 
@@ -73,6 +83,18 @@ message, never a silent drop. The panel shows the error when a write is rejected
 
 Writing the file triggers Vite HMR, which is the persistence mechanism: edits become
 source-visible and git-diffable.
+
+### Page factory (`POST /__pages`)
+
+Also in `vite.config.ts` (`pagesDevPlugin`, dev-only): the Templates page posts
+`{ name, template, unit, dpi, w, h, asDir }` and the middleware writes a real file into
+`src/pages/` — either `Name.vue` or `Name/index.vue`. Validation: PascalCase name
+(6..40 chars, also traversal-proof), known template id or `Blank`, unit px/mm, DPI
+24-1200, canvas resolving to 16-20000 px per side, collision check across both shapes.
+mm converts at the given DPI (`px = mm / 25.4 * dpi`). Template materialization rewrites
+the `data-export-w/h` attributes and injects an inline `width/height` that overrides the
+template's scoped CSS, plus a provenance comment at the top. After a successful POST the
+client does a full navigation, so the fresh glob includes the new route.
 
 ## Testing the scaffolder
 
