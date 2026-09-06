@@ -30,12 +30,21 @@ body {
 @media print {
   .topbar,
   .export-bar,
+  .zoom-bar,
   .panel,
   .fab {
     display: none !important;
   }
   .stage {
     padding: 0 !important;
+    overflow: visible !important;
+  }
+  /* undo the on-screen pan/zoom so print output is 1:1 */
+  .viewport,
+  .zoom-canvas {
+    position: static !important;
+    overflow: visible !important;
+    transform: none !important;
   }
   body {
     background: none !important;

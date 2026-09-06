@@ -15,7 +15,9 @@
     </header>
 
     <main class="stage">
-      <RouterView />
+      <StageZoom>
+        <RouterView />
+      </StageZoom>
     </main>
 
     <ExportBar v-if="route.name !== 'home'" />
@@ -26,6 +28,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ExportBar from './components/ExportBar.vue'
+import StageZoom from './components/StageZoom.vue'
 import TokenPanel from './components/TokenPanel.vue'
 import VueLogo from './components/VueLogo.vue'
 
@@ -91,9 +94,8 @@ const materialRoutes = computed(() =>
 }
 .stage {
   flex: 1;
-  display: flex;
-  /* safe center: when the window is narrower than the material, the left edge stays reachable */
-  justify-content: safe center;
-  padding: 28px 16px 80px;
+  /* pan/zoom viewport owns this area (see StageZoom); centering happens there */
+  position: relative;
+  overflow: hidden;
 }
 </style>

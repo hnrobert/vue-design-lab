@@ -23,7 +23,7 @@ Maintainer guide for the `create-vue-design-lab` repository. User-facing docs li
     └── src/
         ├── pages/         # material pages: one .vue per format, auto-routed, sorted alphabetically
         ├── views/Home.vue # landing page (auto-lists material pages)
-        ├── components/    # TokenPanel / ExportBar / VueLogo
+        ├── components/    # StageZoom (pan/zoom viewport) / TokenPanel / ExportBar / VueLogo
         ├── export/        # PNG / PDF / print export
         ├── router/        # auto routing via import.meta.glob
         └── styles/        # tokens.css (auto-written block) + base.css

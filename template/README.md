@@ -25,6 +25,16 @@ pnpm dev
 The page shows up on the home grid and in the top navigation automatically; the bottom
 export bar produces PNG (2x), PDF, or browser print.
 
+## Canvas gestures
+
+The stage is a pan/zoom viewport: it opens with the whole material fitted to view.
+
+- Pinch (trackpad) or ctrl/cmd + wheel to zoom, anchored at the cursor
+- Two-finger scroll or drag to pan
+- The pill at the bottom left: zoom out, click the percentage to reset to 100%,
+  zoom in, or hit Fit
+- Every page change re-fits; zooming never affects export — output is always 1:1
+
 ## Design tokens
 
 Open the panel via the icon at the top right: colors get a picker, px values get a
