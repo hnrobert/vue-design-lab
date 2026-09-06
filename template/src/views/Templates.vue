@@ -129,16 +129,22 @@ const error = ref('')
 
 /** Selecting a template follows its canonical definition: mm at the
  *  recommended DPI for physical formats, native px for screen formats */
+let selecting = false
+
 function select(id: string) {
   selected.value = id
   error.value = ''
   const t = templates.value.find((x) => x.id === id)
   const meta = id === 'Blank' ? undefined : metaOf(id)
-  if (meta?.unit === 'mm' && meta.mmW && meta.mmH) {
+  const useMm = !!(meta && meta.unit === 'mm' && meta.mmW && meta.mmH)
+  // prefilling flips the unit too - raise the guard so the conversion
+  // watcher below does not re-convert the values we just wrote
+  if (useMm !== (unit.value === 'mm')) selecting = true
+  if (useMm) {
     unit.value = 'mm'
-    dpi.value = meta.dpi
-    w.value = meta.mmW
-    h.value = meta.mmH
+    dpi.value = meta!.dpi
+    w.value = meta!.mmW!
+    h.value = meta!.mmH!
   } else {
     unit.value = 'px'
     dpi.value = 96
@@ -156,8 +162,13 @@ const pxHint = computed(() => {
   return `= ${pw} x ${ph} px${printNote}`
 })
 
-/** Manually switching the unit converts the current values, so nothing jumps */
+/** Manually switching the unit converts the current values, so nothing jumps;
+ *  template-driven switches (guard above) skip this - values are prefilled */
 watch(unit, (next, prev) => {
+  if (selecting) {
+    selecting = false
+    return
+  }
   if (next === prev) return
   if (next === 'mm') {
     w.value = Math.round((w.value / dpi.value) * 25.4)
