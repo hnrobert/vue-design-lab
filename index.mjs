@@ -68,7 +68,9 @@ if (occupied && force) {
 mkdirSync(targetDir, { recursive: true })
 
 // ---------- copy the template (skip local artifacts) ----------
-const skip = (src) => !/[\\/](node_modules|dist|tsconfig\.tsbuildinfo)$/.test(src)
+// pnpm-lock.yaml stays behind too: the package name is rewritten below, and a
+// lockfile not matching package.json hard-fails CI installs (frozen-lockfile)
+const skip = (src) => !/[\\/](node_modules|dist|tsconfig\.tsbuildinfo|pnpm-lock\.yaml)$/.test(src)
 for (const entry of readdirSync(TEMPLATE_DIR)) {
   cpSync(join(TEMPLATE_DIR, entry), join(targetDir, entry), {
     recursive: true,

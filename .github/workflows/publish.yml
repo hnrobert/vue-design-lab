@@ -72,12 +72,13 @@ jobs:
           fi
 
       # Scaffold a copy and build it: proves the shipped template is self-sufficient
-      # (dependencies, pnpm allowBuilds, type-checking all ship correctly).
+      # (dependencies, pnpm allowBuilds, type-checking all ship correctly). The
+      # copy has no lockfile (package name is rewritten), so let CI create one.
       - name: Scaffolder e2e
         run: |
           set -euo pipefail
           node index.mjs /tmp/lab-e2e
-          cd /tmp/lab-e2e && pnpm install && pnpm build
+          cd /tmp/lab-e2e && pnpm install --no-frozen-lockfile && pnpm build
 
       # prepublishOnly builds the template first, so the tarball is always fresh.
       - name: Publish

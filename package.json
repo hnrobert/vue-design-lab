@@ -12,7 +12,8 @@
     "template",
     "!template/dist",
     "!template/node_modules",
-    "!template/*.tsbuildinfo"
+    "!template/*.tsbuildinfo",
+    "!template/pnpm-lock.yaml"
   ],
   "keywords": [
     "vue",

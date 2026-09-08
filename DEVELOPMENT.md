@@ -25,7 +25,7 @@ Maintainer guide for the `create-vue-design-lab` repository. User-facing docs li
         ├── templates/     # starter formats - previews only on /templates, never routed
         ├── views/         # Home (material list) + Templates (gallery + create form)
         ├── components/    # StageZoom / TemplatePreview / TokenPanel / ExportBar / VueLogo
-        ├── export/        # PNG / PDF / print export
+        ├── utils/         # plain helpers (export.ts: PNG / PDF / print)
         ├── router/        # auto routing via import.meta.glob (two page shapes)
         └── styles/        # tokens.css (auto-written block) + base.css
 ```
@@ -64,7 +64,7 @@ A material self-declares its canvas on the root element:
 <div class="poster" data-export data-export-w="850" data-export-h="2000">
 ```
 
-`src/export/useExport.ts` finds the `[data-export]` node and renders it with
+`src/utils/export.ts` finds the `[data-export]` node and renders it with
 html-to-image (PNG, `pixelRatio` = scale) or embeds the raster into a jsPDF page sized
 from the logical dimensions (96dpi base). Browser print injects a matching `@page` and
 relies on the print rules in `base.css` to hide the workbench UI.
@@ -158,3 +158,10 @@ serves the new version.
   `base.css` pointing into `@fontsource-variable/inter/files`. CJK text falls back to
   system fonts — do not "fix" this to full coverage; it keeps export-time font
   inlining light.
+- **Scaffolded copies ship without a lockfile, on purpose.** The CLI rewrites the
+  package name, so a copied `pnpm-lock.yaml` no longer matches `package.json` — local
+  `pnpm install` silently rewrites it, but CI (where pnpm auto-enables
+  `--frozen-lockfile`) hard-fails with `ERR_PNPM_OUTDATED_LOCKFILE`. CI needs a missing
+  lockfile allowed explicitly too, hence `pnpm install --no-frozen-lockfile` in the
+  e2e steps. The repo's `template/pnpm-lock.yaml` is git-ignored so a stray one can
+  never sneak back into the tarball.
