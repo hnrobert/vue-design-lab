@@ -38,6 +38,9 @@ Whatever route you take: typeset with the tokens from `src/styles/tokens.css`
 token panel drive your page. The bottom export bar produces PNG (2x), PDF, or browser
 print.
 
+If fonts ever look stale after edits, hit the circular-arrows button in the top bar:
+it re-downloads every @font-face with cache-busted URLs, no page reload needed.
+
 ## Canvas gestures
 
 The stage is a pan/zoom viewport: it opens with the whole material fitted to view.

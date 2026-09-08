@@ -12,6 +12,19 @@
         <RouterLink to="/templates">Templates</RouterLink>
       </nav>
       <div class="spacer" />
+      <button
+        class="font-refresh"
+        :class="{ done }"
+        :disabled="busy"
+        :title="busy ? 'Reloading fonts...' : 'Reload fonts (bypass cache)'"
+        @click="reloadFonts"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10" />
+          <polyline points="1 20 1 14 7 14" />
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+        </svg>
+      </button>
       <TokenPanel />
     </header>
 
@@ -26,15 +39,32 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ExportBar from './components/ExportBar.vue'
 import StageZoom from './components/StageZoom.vue'
 import TokenPanel from './components/TokenPanel.vue'
 import VueLogo from './components/VueLogo.vue'
+import { refreshFonts } from '@/utils/fonts'
 
 const route = useRoute()
 const router = useRouter()
+
+// Font cache buster: rewrites every @font-face with cache-busted urls
+// and waits for the fresh files - no page reload
+const busy = ref(false)
+const done = ref(false)
+
+async function reloadFonts() {
+  busy.value = true
+  try {
+    await refreshFonts()
+    done.value = true
+    setTimeout(() => (done.value = false), 1200)
+  } finally {
+    busy.value = false
+  }
+}
 
 // Auto-discovered user material pages (routes from src/pages/, not the shell pages)
 const materialRoutes = computed(() =>
@@ -94,6 +124,33 @@ const materialRoutes = computed(() =>
 }
 .spacer {
   flex: 1;
+}
+.font-refresh {
+  display: grid;
+  place-items: center;
+  background: var(--c-surface);
+  border: 1px solid #262b38;
+  border-radius: 8px;
+  padding: 6px 10px;
+  color: var(--c-text-muted);
+  cursor: pointer;
+}
+.font-refresh:hover {
+  color: #fff;
+}
+.font-refresh:disabled {
+  cursor: wait;
+}
+.font-refresh:disabled svg {
+  animation: spin 0.8s linear infinite;
+}
+.font-refresh.done {
+  color: var(--c-accent);
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 .stage {
   flex: 1;
