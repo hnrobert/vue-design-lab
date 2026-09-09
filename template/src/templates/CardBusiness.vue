@@ -16,7 +16,7 @@
 </template>
 
 <script setup lang="ts">
-import VueLogo from '@/components/VueLogo.vue'
+import VueLogo from 'vue-design-lab/components/VueLogo.vue'
 </script>
 
 <style scoped>

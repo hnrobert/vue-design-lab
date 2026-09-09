@@ -10,7 +10,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { findExportRoot, exportPNG, exportPDF, printPage } from '@/utils/export'
+import { findExportRoot, exportPNG, exportPDF, printPage } from '../utils/export'
 
 const route = useRoute()
 

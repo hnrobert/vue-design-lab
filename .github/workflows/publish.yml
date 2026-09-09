@@ -65,21 +65,29 @@ jobs:
       - name: Package hygiene gate
         run: |
           set -euo pipefail
-          extra=$(ls -A template/src/pages | grep -v '^\.gitkeep$' || true)
+          extra=$(ls -A host-template/src/pages | grep -v '^\.gitkeep$' || true)
           if [ -n "$extra" ]; then
-            echo "::error::template/src/pages must be empty before publishing (found: $extra)"
+            echo "::error::host-template/src/pages must be empty before publishing (found: $extra)"
             exit 1
           fi
 
-      # Scaffold a copy and build it: proves the shipped template is self-sufficient
-      # (dependencies, pnpm allowBuilds, type-checking all ship correctly). The
+      # Scaffold a host app and build it against the local library copy
+      # (file: dep - npm does not carry the lib yet at publish time... it does
+      # after the first step below, but file: keeps this gate hermetic). The
       # copy has no lockfile (package name is rewritten), so let CI create one.
       - name: Scaffolder e2e
         run: |
           set -euo pipefail
-          node index.mjs /tmp/lab-e2e
+          node index.mjs /tmp/lab-e2e --lab "file:${GITHUB_WORKSPACE}/template"
           cd /tmp/lab-e2e && pnpm install --no-frozen-lockfile && pnpm build
 
-      # prepublishOnly builds the template first, so the tarball is always fresh.
-      - name: Publish
+      # Publish the library first: hosts depend on it from npm. Its only
+      # "build" is vue-tsc, run here explicitly so the tarball is checked.
+      - name: Publish library (vue-design-lab)
+        run: |
+          pnpm -C template build
+          cd template && npm publish --access public --provenance
+
+      # prepublishOnly typechecks the library, so the tarball is always fresh.
+      - name: Publish CLI (create-vue-design-lab)
         run: npm publish --access public --provenance

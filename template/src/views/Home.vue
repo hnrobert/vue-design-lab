@@ -33,7 +33,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
-import VueLogo from '@/components/VueLogo.vue'
+import VueLogo from '../components/VueLogo.vue'
 
 const router = useRouter()
 // Only the user's own pages (src/pages/), not the shell routes

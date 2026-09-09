@@ -90,8 +90,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import TemplatePreview from '@/components/TemplatePreview.vue'
-import { TEMPLATE_META, type TemplateMeta } from '@/templates/meta'
+import TemplatePreview from '../components/TemplatePreview.vue'
+import { TEMPLATE_META, type TemplateMeta } from '../templates/meta'
 
 type Tpl = { id: string; loader: () => Promise<{ default: unknown }>; w: number; h: number }
 

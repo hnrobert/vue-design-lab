@@ -42,7 +42,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import VueLogo from '@/components/VueLogo.vue'
+import VueLogo from './VueLogo.vue'
 
 const open = ref(false)
 const vars = ref<Record<string, string>>({})

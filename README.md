@@ -39,5 +39,27 @@ the Vue palette, the type hierarchy, and a list of banned patterns.
 
 ---
 
+## Repository layout (for maintainers)
+
+Two packages live in this repo: the workbench **library** (`vue-design-lab`,
+in `template/`) and the **CLI** (`create-vue-design-lab`, at the root) that
+scaffolds a host app consuming it. Hosts keep only their materials —
+`src/pages/` — plus a four-line `main.ts`; every shell update flows through
+the package.
+
+```text
+.
+├── index.mjs            # create-vue-design-lab CLI (copies host-template, rewrites deps)
+├── host-template/       # the host app scaffold: main.ts, tokens.css, vite.config, DESIGN.md
+└── template/            # the vue-design-lab library: shell, components, starters, vite plugin
+```
+
+```bash
+pnpm install     # install the whole workspace from the repo root
+pnpm build       # vue-tsc type-check of the library
+# develop against a live host:
+node index.mjs ../my-lab --lab "link:$(pwd)/template"
+```
+
 Maintaining this repository? The architecture, dev workflow, scaffolder testing, and
 publishing steps live in [DEVELOPMENT.md](DEVELOPMENT.md).

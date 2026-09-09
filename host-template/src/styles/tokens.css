@@ -1,0 +1,18 @@
+/* Your design tokens. The panel edits only the block between the markers;
+   anything outside is yours and is never rewritten. */
+
+/* AUTO:TOKENS:START */
+:root {
+  --c-bg: #12151C;
+  --c-surface: #1B2029;
+  --c-accent: #42D392;
+  --c-accent-soft: #8CE6BD;
+  --c-brand-from: #41D1A7;
+  --c-brand-to: #647EFF;
+  --c-text: #F6F6F6;
+  --c-text-muted: #A8A8A8;
+  --fs-title: 86px;
+  --fs-body: 38px;
+  --radius-card: 16px;
+}
+/* AUTO:TOKENS:END */

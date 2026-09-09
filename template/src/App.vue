@@ -45,7 +45,7 @@ import ExportBar from './components/ExportBar.vue'
 import StageZoom from './components/StageZoom.vue'
 import TokenPanel from './components/TokenPanel.vue'
 import VueLogo from './components/VueLogo.vue'
-import { refreshFonts } from '@/utils/fonts'
+import { refreshFonts } from './utils/fonts'
 
 const route = useRoute()
 const router = useRouter()

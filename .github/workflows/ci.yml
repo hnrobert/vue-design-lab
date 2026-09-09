@@ -51,11 +51,12 @@ jobs:
       - name: Build template (vue-tsc + vite)
         run: pnpm build
 
-      # The same gate the publish workflow runs: scaffold a fresh copy and
-      # build it there. Proves the template is self-sufficient. The copy has
-      # no lockfile (package name is rewritten), so let CI create one.
+      # The same gate the publish workflow runs: scaffold a fresh host app and
+      # build it against the local library copy (file: dep, as npm does not
+      # have the package during development). The copy has no lockfile
+      # (package name is rewritten), so let CI create one.
       - name: Scaffolder e2e
         run: |
           set -euo pipefail
-          node index.mjs /tmp/lab-e2e
+          node index.mjs /tmp/lab-e2e --lab "file:${GITHUB_WORKSPACE}/template"
           cd /tmp/lab-e2e && pnpm install --no-frozen-lockfile && pnpm build

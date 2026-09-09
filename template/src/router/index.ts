@@ -1,20 +1,20 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 /**
- * Auto routing for user materials under src/pages/, in two shapes:
+ * Auto routing for user materials under the HOST's src/pages/, in two shapes:
  *   - a single file:   src/pages/MyPoster.vue      -> /MyPoster
  *   - a folder:        src/pages/MyPoster/index.vue -> /MyPoster
  * Adding a material is dropping a file in (or creating one from the Templates
- * page, which writes real files here) - no registration anywhere.
+ * page, which writes real files there) - no registration anywhere.
  *
- * The starter formats live in src/templates/ and are NOT routed; they only
- * appear as previews on /templates.
+ * The leading-slash globs resolve against the Vite root, i.e. the host app -
+ * this router ships inside the vue-design-lab package.
  *
- * Page sizes are self-declared via data-export-w / data-export-h on each root
- * element, read by the export bar.
+ * The starter formats live in this package's src/templates/ and are NOT
+ * routed; they only appear as previews on /templates.
  */
-const singleModules = import.meta.glob('../pages/*.vue')
-const dirModules = import.meta.glob('../pages/*/index.vue')
+const singleModules = import.meta.glob('/src/pages/*.vue')
+const dirModules = import.meta.glob('/src/pages/*/index.vue')
 
 function materialName(file: string): string | null {
   let m = /\/([\w-]+)\/index\.vue$/.exec(file)

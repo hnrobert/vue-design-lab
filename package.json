@@ -9,11 +9,7 @@
   },
   "files": [
     "index.mjs",
-    "template",
-    "!template/dist",
-    "!template/node_modules",
-    "!template/*.tsbuildinfo",
-    "!template/pnpm-lock.yaml"
+    "host-template"
   ],
   "keywords": [
     "vue",
@@ -30,7 +26,6 @@
   },
   "packageManager": "pnpm@11.24.0",
   "scripts": {
-    "dev": "pnpm -C template dev",
     "build": "pnpm -C template build",
     "prepublishOnly": "pnpm -C template build"
   }
