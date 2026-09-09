@@ -1,6 +1,0 @@
-# pnpm >= 10 reads this file as its config file (works for single-package projects too)
-# Allow these dependencies to run install scripts: esbuild fetches its platform
-# binary, core-js prints a funding notice
-allowBuilds:
-  core-js: true
-  esbuild: true

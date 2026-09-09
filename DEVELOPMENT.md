@@ -51,9 +51,19 @@ pnpm install     # install the whole workspace from the repo root
 pnpm build       # vue-tsc type-check of the library
 ```
 
-There is no demo app inside the library anymore — develop against a real host
-linked to the local source (see below); edits to `template/src` show up there
-through the symlink on the next dev-server reload.
+The root `devDependencies` (`vite`, `@vitejs/plugin-vue`, `@types/node`, plus
+`vue-design-lab: workspace:*`) exist so that `host-template/` — which has no
+node_modules of its own in this repo — resolves `vite/client` and its imports
+in editors and in `vue-tsc -p ../host-template/tsconfig.json`. They never ship:
+npm pack excludes devDependencies.
+
+The library ships no demo app of its own — develop against a real host linked
+to the local source (see below); edits to `template/src` show up there through
+the symlink on the next dev-server reload.
+
+The library ships no demo app of its own — develop against a real host linked
+to the local source (see below); edits to `template/src` show up there through
+the symlink on the next dev-server reload.
 
 ### The linked-host dev loop
 

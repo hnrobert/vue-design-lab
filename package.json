@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Scaffold a Vue-flavored design lab where designers learn HTML/CSS/Vue by typesetting real poster materials.",
+  "//": "root devDependencies exist only so host-template/ resolves types in-editor and in vue-tsc; they never ship (devDeps are excluded from npm pack)",
   "license": "MIT",
   "bin": {
     "create-vue-design-lab": "index.mjs"
@@ -28,5 +29,11 @@
   "scripts": {
     "build": "pnpm -C template build",
     "prepublishOnly": "pnpm -C template build"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.0.0",
+    "vue-design-lab": "workspace:*"
   }
 }
