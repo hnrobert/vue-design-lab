@@ -1,6 +1,6 @@
 {
   "name": "vue-design-lab",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "The Vue Design Lab workbench as an installable package: consume it, add src/pages/, get a material studio.",
   "license": "MIT",
