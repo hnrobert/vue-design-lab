@@ -13,6 +13,7 @@
     "lockfiles",
     "npmjs",
     "pipefail",
+    "preflights",
     "retarget",
     "retargets",
     "rgba",

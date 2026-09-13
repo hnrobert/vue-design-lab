@@ -5,6 +5,10 @@
   "description": "Scaffold a Vue-flavored design lab where designers learn HTML/CSS/Vue by typesetting real poster materials.",
   "//": "root devDependencies exist only so host-template/ resolves types in-editor and in vue-tsc; they never ship (devDeps are excluded from npm pack)",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hnrobert/vue-design-lab.git"
+  },
   "bin": {
     "create-vue-design-lab": "index.mjs"
   },

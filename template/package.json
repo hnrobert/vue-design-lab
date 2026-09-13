@@ -4,6 +4,11 @@
   "type": "module",
   "description": "The Vue Design Lab workbench as an installable package: consume it, add src/pages/, get a material studio.",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hnrobert/vue-design-lab.git",
+    "directory": "template"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./vite": "./src/vite-plugin.mjs",
