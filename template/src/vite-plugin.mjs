@@ -250,7 +250,7 @@ export function lab() {
             ) {
               throw new Error(`src/pages already contains "${name}"`)
             }
-            const target = `src/${relative(root, file)}`
+            const target = relative(root, file)
             mkdirSync(dirname(file), { recursive: true })
             writeFileSync(file, createSource(templatesDir, String(template), pxW, pxH, target))
             res.setHeader('content-type', 'application/json')
