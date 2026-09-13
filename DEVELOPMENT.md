@@ -170,9 +170,14 @@ workflow's hygiene gate (only `.gitkeep` may ship).
 
 ## Publishing
 
-Release-driven: a GitHub Release publishes BOTH packages via OIDC trusted
-publishing (`.github/workflows/publish.yml`) — the library first (hosts depend
-on it), then the CLI. Both need their own one-time setup:
+Dispatch-driven (manual only, matching the other Node projects): Actions ->
+**Publish** -> Run workflow -> enter a version. `.github/workflows/publish.yml`
+stamps BOTH package.json files in lockstep, runs the hygiene gate plus the
+scaffolder e2e, commits + tags `v<version>` as `github-actions[bot]`, and
+publishes via OIDC trusted publishing — the library first (hosts depend on it),
+then the CLI. It is never triggered by tags or releases.
+
+Both packages need their own one-time setup:
 
 1. `npm publish` each package locally once so it exists under the account
    (bootstrap `0.1.0`; start releasing from `v0.1.1`)

@@ -1,25 +1,34 @@
 name: Publish
 
-# Publish create-vue-design-lab to npm when a GitHub Release is published.
-# Auth is OIDC trusted publishing - no tokens anywhere.
+# Publish both npm packages via OIDC trusted publishing - no tokens anywhere.
+# Manually triggered ONLY: Actions -> Publish -> Run workflow -> enter a version.
 #
 # Two-phase setup (once per package):
-#   Phase 1: publish locally once (`npm publish`) so the package exists, then
-#            on npmjs.com -> package -> Settings -> Trusted Publishers, bind
-#            this repository with workflow file `publish.yml`.
-#   Phase 2: every release publishes with GitHub's OIDC token alone, with
-#            provenance attestation.
+#   1. vue-design-lab (template/): publish locally once, then on npmjs.com ->
+#      package -> Settings -> Trusted Publishers, bind this repository with
+#      workflow file `publish.yml` and path `template/`.
+#   2. create-vue-design-lab (repo root): same, path is the repo root.
 #
-# The release tag is the source of truth for the version: it is stamped into
-# package.json at publish time, so no manual version syncing is needed.
+# Flow: stamp BOTH package.json with the input version (lockstep) -> gates
+# (package hygiene + scaffolder e2e) -> bot commit + tag v<version> -> publish
+# the library first (hosts depend on it), then the CLI.
+#
+#   - id-token: write  -> OIDC publish + npm provenance.
+#   - contents: write  -> pushes the release commit + tag.
+# A tag pushed by this workflow's own GITHUB_TOKEN does NOT re-trigger
+# workflows, so there is no double publish.
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to publish for BOTH packages, e.g. 0.2.0 (leading "v" optional). Bumps both package.json, commits, tags, then publishes.'
+        required: true
+        type: string
 
 permissions:
-  contents: read
-  id-token: write # OIDC publish + npm provenance
+  contents: write
+  id-token: write
 
 concurrency:
   group: npm-publish
@@ -27,7 +36,7 @@ concurrency:
 
 jobs:
   publish:
-    name: Publish to npm
+    name: Stamp, gate, publish
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -47,18 +56,20 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      # Stamp the release tag (v1.2.3 -> 1.2.3) into package.json. No git ops:
-      # the tag and the release already exist. Skipped when already in sync.
-      - name: Stamp version from release tag
+      # Stamp both packages in lockstep; npm version validates semver.
+      - name: Stamp version
         env:
-          TAG: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          VERSION="${TAG#v}"
-          CURRENT=$(node -p "require('./package.json').version")
-          if [ "$CURRENT" != "$VERSION" ]; then
-            npm version "$VERSION" --no-git-tag-version
+          VERSION="${INPUT_VERSION#v}"                      # tolerate "v0.2.0"
+          if [ -z "$VERSION" ]; then
+            echo "::error::version input is required (e.g. 0.2.0)"
+            exit 1
           fi
+          npm version "$VERSION" --no-git-tag-version
+          (cd template && npm version "$VERSION" --no-git-tag-version)
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
 
       # Test pages are git-ignored locally (.git/info/exclude) but npm packs by
       # the files allowlist, not git rules - never ship them.
@@ -72,17 +83,29 @@ jobs:
           fi
 
       # Scaffold a host app and build it against the local library copy
-      # (file: dep - npm does not carry the lib yet at publish time... it does
-      # after the first step below, but file: keeps this gate hermetic). The
-      # copy has no lockfile (package name is rewritten), so let CI create one.
+      # (file: dep keeps this gate hermetic regardless of what npm carries).
+      # The copy has no lockfile (package name is rewritten), so let CI
+      # create one.
       - name: Scaffolder e2e
         run: |
           set -euo pipefail
           node index.mjs /tmp/lab-e2e --lab "file:${GITHUB_WORKSPACE}/template"
           cd /tmp/lab-e2e && pnpm install --no-frozen-lockfile && pnpm build
 
-      # Publish the library first: hosts depend on it from npm. Its only
-      # "build" is vue-tsc, run here explicitly so the tarball is checked.
+      # Runs after the gates so a broken tree is never tagged.
+      - name: Commit, tag, push
+        run: |
+          set -euo pipefail
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          git add package.json template/package.json
+          git commit -m "chore(release): v${RELEASE_VERSION}"
+          git tag "v${RELEASE_VERSION}"
+          git push origin "HEAD:$BRANCH" "v${RELEASE_VERSION}"
+
+      # The library first: hosts depend on it from npm. Its only build is
+      # vue-tsc, run explicitly so the tarball is checked.
       - name: Publish library (vue-design-lab)
         run: |
           pnpm -C template build
