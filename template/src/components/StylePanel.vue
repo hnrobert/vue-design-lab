@@ -71,7 +71,7 @@
           <h4>{{ r.selector }}</h4>
           <div v-for="p in r.props" :key="p.prop" class="prop">
             <code>{{ p.prop }}</code>
-            <input :value="p.value" spellcheck="false" @change="setInline(p.prop, $event)" />
+            <input :value="p.value" spellcheck="false" @change="saveRuleProp(r, p.prop, $event)" />
           </div>
         </section>
 
@@ -82,8 +82,10 @@
 
         <footer class="elt-foot">
           <span class="hint">
-            Edits apply live and are written back into the page's AUTO:OVERRIDES block
+            Rule edits write straight into the page's own CSS
+            <template v-if="eltMode === 'override'"> (source rule not found - saved as an override)</template>
             <template v-if="eltSavedAt"> - saved {{ eltSavedAt }}</template>
+            ; element.style edits are session-only
           </span>
           <span v-if="eltError" class="elt-error">{{ eltError }}</span>
           <button class="copy" @click="copyCss">Copy CSS</button>
@@ -183,7 +185,8 @@ function setToken(name: string, value: string) {
       if (res.ok) {
         savedAt.value = new Date().toLocaleTimeString()
       } else {
-        error.value = `Write failed: ${await res.text()}`
+        const text = (await res.text()).trim()
+        error.value = `Write failed: ${text || `${res.status} ${res.statusText || '(no body)'}`}`
       }
     } catch {
       error.value = 'Write failed: dev server unreachable'
@@ -249,7 +252,10 @@ function queueOverride(prop: string, value: string | null) {
       if (res.ok) {
         eltSavedAt.value = new Date().toLocaleTimeString()
       } else {
-        eltError.value = `Write failed: ${await res.text()}`
+        // surface the status when the body is empty (e.g. 404 from a stale
+        // dev server started before the /__element-styles route existed)
+        const text = (await res.text()).trim()
+        eltError.value = `Write failed: ${text || `${res.status} ${res.statusText || '(no body)'}`}`
       }
     } catch {
       eltError.value = 'Write failed: dev server unreachable'
@@ -264,6 +270,8 @@ interface Prop {
 interface RuleGroup {
   id: string
   selector: string
+  /** full selector text (scoped attrs stripped) - the source write-back key */
+  full: string
   props: Prop[]
 }
 const rules = ref<RuleGroup[]>([])
@@ -321,8 +329,10 @@ function collectRules(el: HTMLElement) {
         const prop = rule.style.item(i)
         props.push({ prop, value: rule.style.getPropertyValue(prop) })
       }
+      // full selector minus scoped attrs = the key for direct source edits
+      const full = rule.selectorText.replace(/\[data-v-[a-f0-9]+\]/g, '').replace(/\s+/g, ' ').trim()
       if (props.length) {
-        out.push({ id: `${out.length}::${matchedParts.join(', ')}`, selector: matchedParts.join(', '), props })
+        out.push({ id: `${out.length}::${matchedParts.join(', ')}`, selector: matchedParts.join(', '), full, props })
       }
     }
   }
@@ -359,6 +369,52 @@ function clear() {
   inlineProps.value = []
 }
 
+/** Rule-row edit: write straight into the page's own CSS. The server edits
+ *  the original rule in place; HMR applies it, so no inline override exists.
+ *  A missing selector falls back to the AUTO:OVERRIDES block. */
+const eltMode = ref<'source' | 'override' | ''>('')
+
+async function saveRulePropRaw(rule: RuleGroup, prop: string, value: string | null) {
+  // optimistic: update the displayed row so the edit feels instant
+  const group = rules.value.find((r) => r.id === rule.id)
+  if (group) {
+    if (value === null) group.props = group.props.filter((p) => p.prop !== prop)
+    else {
+      const hit = group.props.find((p) => p.prop === prop)
+      if (hit) hit.value = value
+      else group.props.push({ prop, value })
+    }
+  }
+  eltSavedAt.value = ''
+  eltError.value = ''
+  try {
+    const res = await fetch('/__element-rule', {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ page: String(route.name ?? ''), selector: rule.full, prop, value }),
+    })
+    if (res.ok) {
+      const { mode } = (await res.json()) as { mode: 'source' | 'override' }
+      eltMode.value = mode
+      eltSavedAt.value = new Date().toLocaleTimeString()
+      // HMR swaps the stylesheet shortly; re-collect to sync with file truth
+      window.setTimeout(() => {
+        if (selected.value) rules.value = collectRules(selected.value)
+      }, 600)
+    } else {
+      const text = (await res.text()).trim()
+      eltError.value = `Write failed: ${text || `${res.status} ${res.statusText || '(no body)'}`}`
+    }
+  } catch {
+    eltError.value = 'Write failed: dev server unreachable'
+  }
+}
+
+function saveRuleProp(rule: RuleGroup, prop: string, ev: Event) {
+  const raw = (ev.target as HTMLInputElement).value.trim()
+  saveRulePropRaw(rule, prop, raw || null)
+}
+
 function setInline(prop: string, ev: Event) {
   const el = selected.value
   if (!el) return
@@ -366,24 +422,29 @@ function setInline(prop: string, ev: Event) {
   if (!value) el.style.removeProperty(prop)
   else el.style.setProperty(prop, value)
   refreshInline()
-  queueOverride(prop, value || null)
 }
 
 function removeInline(prop: string) {
   selected.value?.style.removeProperty(prop)
   refreshInline()
-  queueOverride(prop, null)
 }
 
 function addProp() {
   const prop = newProp.value.trim()
   const value = newVal.value.trim()
   if (!prop || !value || !selected.value) return
-  selected.value.style.setProperty(prop, value)
   newProp.value = ''
   newVal.value = ''
-  refreshInline()
-  queueOverride(prop, value)
+  const target = rules.value[0]
+  if (target) {
+    // insert into the element's first matching source rule
+    saveRulePropRaw(target, prop, value)
+  } else {
+    // no source rule at all: session inline + OVERRIDES fallback
+    selected.value.style.setProperty(prop, value)
+    refreshInline()
+    queueOverride(prop, value)
+  }
 }
 
 async function copyCss() {

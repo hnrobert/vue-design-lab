@@ -190,6 +190,55 @@ function upsertElementOverrides(file, selectorPath, props) {
   writeFileSync(file, src)
 }
 
+/** ---------- direct rule editing (rule rows write into the page source) ---------- */
+
+/** Runtime selectors carry scoped attributes; the page source does not */
+function stripScopedAttrs(sel) {
+  return String(sel)
+    .replace(/\[data-v-[a-f0-9]+\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/** Build a regex matching the rule in SOURCE text: whitespace-flexible exact
+ *  full-selector match (comma lists included) followed by its body */
+function selectorSourceRe(sel) {
+  const parts = sel
+    .split(',')
+    .map((p) =>
+      p
+        .trim()
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/\s+/g, '\\s+'),
+    )
+  return new RegExp(`(^|[}\\n])((?:[^{}]*?\\s)?${parts.join('\\s*,\\s*')}\\s*)(\\{[^}]*\\})`, 'g')
+}
+
+/** Edit prop inside every occurrence of the rule in the page source.
+ *  value=null removes the declaration; absent props are inserted.
+ *  Returns true when the rule was found and rewritten. */
+function editRuleInSource(file, selector, prop, value) {
+  let src = readFileSync(file, 'utf8')
+  const re = selectorSourceRe(selector)
+  let touched = false
+  const next = src.replace(re, (_m, pre, head, body) => {
+    touched = true
+    const declRe = new RegExp(`(^|\\s)(${prop.replace(/[-]/g, '\\-')})\\s*:\\s*[^;]*;`, 'g')
+    if (value === null) {
+      return pre + head + body.replace(declRe, '$1')
+    }
+    if (declRe.test(body)) {
+      // reset lastIndex (test with /g advances it)
+      declRe.lastIndex = 0
+      return pre + head + body.replace(declRe, `$1${prop}: ${value};`)
+    }
+    return pre + head + body.replace(/\}$/, `  ${prop}: ${value};\n}`)
+  })
+  if (!touched) return false
+  writeFileSync(file, next)
+  return true
+}
+
 /** Blank starter page at an explicit canvas size */
 function blankSource(w, h, target) {
   return `<!-- Created via the Templates page -> ${target} (${w}x${h}px) -->
@@ -287,7 +336,13 @@ export function lab() {
     config() {
       // this package is consumed as source via link:/workspace installs -
       // never let Vite pre-bundle it (esbuild cannot handle .vue)
-      return { optimizeDeps: { exclude: ['vue-design-lab'] } }
+      return {
+        optimizeDeps: { exclude: ['vue-design-lab'] },
+        // link: installs put this package's real files (and its node_modules)
+        // outside the host root; fs.strict would 403 export-time fetches of
+        // e.g. bundled fonts via the symlink. Dev-only design tool: allow.
+        server: { fs: { strict: false } },
+      }
     },
     configResolved(config) {
       root = config.root
@@ -403,6 +458,40 @@ export function lab() {
             res.end('ok')
           } catch (err) {
             console.warn('[element-styles] PUT rejected:', String(err))
+            res.statusCode = 400
+            res.end(err instanceof Error ? err.message : String(err))
+          }
+        })
+      })
+
+      // ---------- direct rule editing (writes into the original rule) ----------
+      server.middlewares.use('/__element-rule', (req, res) => {
+        if (req.method !== 'PUT') {
+          res.statusCode = 405
+          res.end()
+          return
+        }
+        let body = ''
+        req.on('data', (c) => (body += c))
+        req.on('end', () => {
+          try {
+            const { page, selector, prop, value } = JSON.parse(body)
+            const file = pageFile(page)
+            if (!file) throw new Error(`unknown page: ${page}`)
+            const sel = stripScopedAttrs(validateSelector(selector))
+            const val = validateDecl(prop, value)
+            // edit the original rule in place; when the selector does not
+            // exist in the page source, fall back to the OVERRIDES block
+            if (editRuleInSource(file, sel, prop, val)) {
+              res.setHeader('content-type', 'application/json')
+              res.end(JSON.stringify({ mode: 'source' }))
+            } else {
+              upsertElementOverrides(file, sel, { [prop]: val })
+              res.setHeader('content-type', 'application/json')
+              res.end(JSON.stringify({ mode: 'override' }))
+            }
+          } catch (err) {
+            console.warn('[element-rule] PUT rejected:', String(err))
             res.statusCode = 400
             res.end(err instanceof Error ? err.message : String(err))
           }

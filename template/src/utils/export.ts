@@ -11,9 +11,50 @@ export function findExportRoot(): { el: HTMLElement; w: number; h: number } | nu
   return { el, w, h }
 }
 
+/**
+ * Swap every <img> inside the export root to a data URI before rasterizing.
+ * html-to-image's own image embedder drops some images deterministically
+ * (observed with a plain RGB PNG in this project), while a manual
+ * fetch -> blob -> dataURL round-trip works for all of them. The returned
+ * restore fn puts the original src attributes back afterwards.
+ */
+async function inlineImages(root: HTMLElement): Promise<() => void> {
+  const imgs = Array.from(root.querySelectorAll('img'))
+  const originals: (string | null)[] = []
+  await Promise.all(
+    imgs.map(async (img, i) => {
+      originals[i] = img.getAttribute('src')
+      if (!img.src || img.src.startsWith('data:')) return
+      try {
+        const blob = await (await fetch(img.src)).blob()
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const fr = new FileReader()
+          fr.onload = () => resolve(String(fr.result))
+          fr.onerror = () => reject(fr.error)
+          fr.readAsDataURL(blob)
+        })
+        img.src = dataUrl
+      } catch {
+        /* keep the original src when the fetch fails */
+      }
+    }),
+  )
+  return () => {
+    imgs.forEach((img, i) => {
+      const original = originals[i]
+      if (original !== null) img.setAttribute('src', original)
+    })
+  }
+}
+
 async function renderPng(w: number, h: number, scale: number): Promise<string> {
   const { el } = findExportRoot()!
-  return toPng(el, { pixelRatio: scale, width: w, height: h })
+  const restore = await inlineImages(el)
+  try {
+    return await toPng(el, { pixelRatio: scale, width: w, height: h })
+  } finally {
+    restore()
+  }
 }
 
 function triggerDownload(url: string, filename: string) {

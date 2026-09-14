@@ -120,16 +120,18 @@ has no block, it falls back to the host's `src/styles/tokens.css`. GET parses
 the block; PUT validates, merges with on-disk values, and rewrites only the
 block between the markers.
 
-### Element overrides (`PUT /__element-styles`)
+### Element editing (`PUT /__element-rule`, fallback `PUT /__element-styles`)
 
-The Styles panel's Element tab edits preview as inline overrides and then
-persist here: `{ page, selectorPath, props }` merges declarations into the
-page's `AUTO:OVERRIDES` block (a scoped `<style>` section appended on first
-use). The selectorPath is computed client-side as the element's full CSS path
-(classes + nth-of-type disambiguation), so persisted rules keep working across
-reloads. Server-side validation whitelists selector characters (no `< ; { } @`)
-and value characters, keeping the CSS text structurally safe; `null` prop values
-remove declarations and empty selectors drop out of the block.
+Rule-row edits in the Styles panel's Element tab write straight into the page's
+own CSS: `{ page, selector, prop, value }` locates the rule in the page source
+by its full selector text (scoped `[data-v-…]` attrs stripped, whitespace
+flexible) and edits the declaration in place — replace, insert, or remove with
+a `null` value. Vite HMR applies the change instantly; no inline override and
+no extra block exist. When the selector is not found in the page source (rule
+comes from elsewhere), the write falls back to the `AUTO:OVERRIDES` block
+(a scoped `<style>` section maintained by `PUT /__element-styles` with full
+path selectors). Server-side validation whitelists selector and value
+characters (no `< ; { } @`), keeping the CSS text structurally safe.
 
 Validation rejects bad keys, non-strings, empty or >=64-char values, and any
 value containing `; { }` (which would corrupt the stylesheet structure) — with
@@ -232,3 +234,8 @@ the new version.
   `base.css` pointing into `@fontsource-variable/inter/files`. CJK text falls
   back to system fonts — do not "fix" this to full coverage; it keeps
   export-time font inlining light.
+- **Lib `vite-plugin.mjs` changes need a dev-server restart.** A linked host's
+  Vite does not watch the symlinked plugin file (realpath outside the project
+  root), so a long-running server keeps serving the OLD middleware — new API
+  routes 404 with an empty body. After changing the plugin, restart the host's
+  `pnpm dev`; the client surfaces this as `Write failed: 404 (no body)`.

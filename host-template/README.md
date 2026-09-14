@@ -54,13 +54,14 @@ the markers is never touched.
 **Element** — a DevTools-like inspector. Turn inspect mode on (the arrow button in
 the top bar, or the toggle in this tab): hovering highlights elements inside the
 material, clicking one selects it. The tab lists every CSS rule that actually
-applies to the selected element plus its inline style, all editable — edits apply
-live AND are written back into the page's `AUTO:OVERRIDES` block (a scoped style
-section the panel maintains; hand edits welcome). Empty a value to remove it,
-press Esc to deselect. Each element is identified by its full CSS path, so the
-persisted rules survive reloads and land in git.
+applies to the selected element plus its inline style, all editable — **rule-row
+edits write straight into the page's own CSS** (the original rule changes in
+place, applied live via HMR; empty a value to remove the declaration, use the
+two bottom fields to add new properties into the rule). When a rule cannot be
+found in the page source, the edit lands in the panel-maintained
+`AUTO:OVERRIDES` fallback block instead. Press Esc to deselect.
 
-In short: Tokens persist the palette, Elements persist per-element tweaks — both
+In short: Tokens persist the palette, Elements edit the page's real CSS — both
 layers write back to the page source from one panel.
 
 ## Canvas gestures
