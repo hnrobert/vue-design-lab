@@ -332,6 +332,9 @@ select {
   font-size: 13px;
   padding: 7px 9px;
   width: 100%;
+  /* native selects size themselves differently from inputs at the same
+     padding/font - a shared fixed height keeps every control aligned */
+  height: 32px;
 }
 input:focus,
 select:focus {
