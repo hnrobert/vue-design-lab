@@ -84,3 +84,14 @@ glows, no outer-glow shadows.
 - No `LABEL // YEAR` typographic labels
 - Display type must be track-tight; body labels wide-tracked — default tracking is a bug
 - Hard-coded colors instead of tokens inside a material: a bug
+
+### Export fidelity (PNG/PDF goes through an html-to-image clone — these break it)
+
+- Geometry in absolute `px` only; container-query units (`cqw` and friends) do not
+  survive the clone — the canvas is fixed, so px is always equivalent
+- Grid cells sized by explicit `grid-auto-rows` in px, never by `aspect-ratio`
+  (heights collapse inside the clone)
+- No `filter: drop-shadow(...)` on grid/box containers — it collapses their
+  children in the clone; use an offset duplicate layer as the shadow instead
+- Decorative graphics as inline `<svg>` elements, not `url("data:image/svg+xml,...")`
+  backgrounds — data-URI backgrounds vanish during style re-serialization

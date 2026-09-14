@@ -69,15 +69,20 @@ function contentSize(): { w: number; h: number } {
   return canvas ? { w: canvas.offsetWidth, h: canvas.offsetHeight } : { w: 0, h: 0 }
 }
 
-/** Keep the scaled material overlapping the viewport: center when smaller, clamp when larger */
+/** Keep the scaled material overlapping the viewport: center when smaller, clamp when larger.
+ *  Vertical centering subtracts the fixed bottom export bar (~53px) so the
+ *  material reads centered in the VISIBLE area, not the full viewport. */
+const BOTTOM_CLEARANCE = 60
+
 function clampPan() {
   const vp = viewportEl.value
   if (!vp) return
   const { w, h } = contentSize()
   const sw = w * scale.value
   const sh = h * scale.value
+  const vh = vp.clientHeight - BOTTOM_CLEARANCE
   tx.value = sw <= vp.clientWidth ? (vp.clientWidth - sw) / 2 : Math.min(0, Math.max(vp.clientWidth - sw, tx.value))
-  ty.value = sh <= vp.clientHeight ? (vp.clientHeight - sh) / 2 : Math.min(0, Math.max(vp.clientHeight - sh, ty.value))
+  ty.value = sh <= vh ? (vh - sh) / 2 : Math.min(0, Math.max(vp.clientHeight - sh, ty.value))
 }
 
 /** Zoom to an absolute scale keeping the given viewport point stationary */
@@ -98,16 +103,18 @@ function zoomToScale(next: number, cx?: number, cy?: number) {
 
 const zoomStep = (factor: number) => zoomToScale(scale.value * factor)
 
-/** Fit the whole material into view with a margin; the initial state on every material page */
+/** Fit the whole material into view with a margin; the initial state on every
+ *  material page. Centers within the visible area (export bar excluded). */
 function fit() {
   const vp = viewportEl.value
   if (!vp || !zoomable.value) return
   const { w, h } = contentSize()
   if (!w || !h) return
-  const s = Math.min((vp.clientWidth - FIT_MARGIN) / w, (vp.clientHeight - FIT_MARGIN) / h, 1)
+  const vh = vp.clientHeight - BOTTOM_CLEARANCE
+  const s = Math.min((vp.clientWidth - FIT_MARGIN) / w, (vh - FIT_MARGIN) / h, 1)
   scale.value = s
   tx.value = (vp.clientWidth - w * s) / 2
-  ty.value = (vp.clientHeight - h * s) / 2
+  ty.value = (vh - h * s) / 2
   userZoomed.value = false
 }
 
