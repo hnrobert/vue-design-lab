@@ -265,6 +265,18 @@ onBeforeUnmount(() => {
   max-width: 100%;
   margin: 0 auto;
 }
+/* Checkerboard behind materials (zoom mode only): opaque canvases cover it,
+   transparent ones reveal it - the editor convention for transparency.
+   The checker lives on the wrapper, never inside [data-export], so PNG/PDF
+   export stays untouched. */
+.zoom-canvas:not(.flow) {
+  background-color: #1c202b;
+  background-image:
+    linear-gradient(45deg, #242a38 25%, transparent 25%, transparent 75%, #242a38 75%),
+    linear-gradient(45deg, #242a38 25%, transparent 25%, transparent 75%, #242a38 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+}
 .zoom-bar {
   position: fixed;
   left: 14px;

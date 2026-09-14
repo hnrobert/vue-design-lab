@@ -38,12 +38,14 @@ body {
     padding: 0 !important;
     overflow: visible !important;
   }
-  /* undo the on-screen pan/zoom so print output is 1:1 */
+  /* undo the on-screen pan/zoom so print output is 1:1;
+     background: none also drops the transparency checkerboard in print */
   .viewport,
   .zoom-canvas {
     position: static !important;
     overflow: visible !important;
     transform: none !important;
+    background: none !important;
   }
   body {
     background: none !important;
