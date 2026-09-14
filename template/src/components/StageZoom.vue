@@ -2,7 +2,7 @@
   <div
     ref="viewportEl"
     class="viewport"
-    :class="{ dragging, flow: !zoomable }"
+    :class="[{ dragging }, { flow: !zoomable }, { inspecting: props.inspect }]"
     @wheel="onWheel"
     @pointerdown="onPointerDown"
     @pointermove="onPointerMove"
@@ -25,6 +25,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+
+/** While inspect mode is on, clicks must reach material elements - the
+ *  viewport stops capturing pointers and stops panning. */
+const props = defineProps<{ inspect?: boolean }>()
 
 /**
  * The stage viewport, with two modes:
@@ -145,7 +149,7 @@ const pinchDist = () => {
 }
 
 function onPointerDown(e: PointerEvent) {
-  if (!zoomable.value) return
+  if (!zoomable.value || props.inspect) return
   ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
   if (pointers.size === 2) {
@@ -251,6 +255,9 @@ onBeforeUnmount(() => {
 }
 .viewport.dragging {
   cursor: grabbing;
+}
+.viewport.inspecting {
+  cursor: crosshair;
 }
 /* Flow mode (home / templates): a normal, scrollable, interactive page */
 .viewport.flow {

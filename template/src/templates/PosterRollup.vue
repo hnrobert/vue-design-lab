@@ -21,7 +21,7 @@ import VueLogo from 'vue-design-lab/components/VueLogo.vue'
 
 <style scoped>
 /* Brand rollup: physical 850x2000mm at a 72dpi design canvas = 2409x5669px.
-   Everything reads tokens - changing one in TokenPanel changes this page */
+   Everything reads tokens - changing one in the Tokens tab changes this page */
 .poster {
   width: 2409px;
   height: 5669px;

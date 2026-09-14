@@ -39,12 +39,29 @@ print.
 If fonts ever look stale after edits, hit the circular-arrows button in the top bar:
 it re-downloads every @font-face with cache-busted URLs, no page reload needed.
 
-## Design tokens
+## Styles panel (tokens & elements)
 
-Open the panel via the icon at the top right: colors get a picker, px values get a
-slider. Edits preview instantly and are written back to the `AUTO:TOKENS` block in
-`src/styles/tokens.css` after a 350ms debounce — source-level persistence, visible to
-git, easy to revert. The handwritten zone outside the markers is never touched.
+The logo button at the top right opens the unified style editor with two tabs:
+
+**Tokens** — the design-system layer. Colors get a picker, px values get a slider;
+edits preview instantly and are written back to source after a 350ms debounce.
+Pages created from the Templates page carry their **own** `AUTO:TOKENS` block
+scoped to the page root, so each material owns an independent palette — the panel
+edits that block directly (the tip shows the scope). Pages without their own block
+fall back to the host-wide `src/styles/tokens.css`. The handwritten zone outside
+the markers is never touched.
+
+**Element** — a DevTools-like inspector. Turn inspect mode on (the arrow button in
+the top bar, or the toggle in this tab): hovering highlights elements inside the
+material, clicking one selects it. The tab lists every CSS rule that actually
+applies to the selected element plus its inline style, all editable — edits apply
+live AND are written back into the page's `AUTO:OVERRIDES` block (a scoped style
+section the panel maintains; hand edits welcome). Empty a value to remove it,
+press Esc to deselect. Each element is identified by its full CSS path, so the
+persisted rules survive reloads and land in git.
+
+In short: Tokens persist the palette, Elements persist per-element tweaks — both
+layers write back to the page source from one panel.
 
 ## Canvas gestures
 

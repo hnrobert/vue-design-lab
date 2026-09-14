@@ -1,5 +1,5 @@
 <template>
-  <div class="shell">
+  <div class="shell" :class="{ 'inspect-open': inspecting }">
     <header class="topbar">
       <RouterLink class="brand" to="/">
         <VueLogo :size="20" inner="var(--c-bg)" />
@@ -13,6 +13,16 @@
       </nav>
       <div class="spacer" />
       <button
+        class="inspect-toggle"
+        :class="{ on: inspecting }"
+        :title="inspecting ? 'Inspect: on - click elements in the material' : 'Inspect elements'"
+        @click="toggleInspect"
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 3l7 17 2.5-7.5L21 10z" />
+        </svg>
+      </button>
+      <button
         class="font-refresh"
         :class="{ done }"
         :disabled="busy"
@@ -25,11 +35,11 @@
           <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
         </svg>
       </button>
-      <TokenPanel />
+      <StylePanel v-model:open="styleOpen" v-model:inspect="inspecting" />
     </header>
 
     <main class="stage">
-      <StageZoom>
+      <StageZoom :inspect="inspecting">
         <RouterView />
       </StageZoom>
     </main>
@@ -43,12 +53,21 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ExportBar from './components/ExportBar.vue'
 import StageZoom from './components/StageZoom.vue'
-import TokenPanel from './components/TokenPanel.vue'
+import StylePanel from './components/StylePanel.vue'
 import VueLogo from './components/VueLogo.vue'
 import { refreshFonts } from './utils/fonts'
 
 const route = useRoute()
 const router = useRouter()
+
+// Element inspect mode + the unified style panel (tokens & element tabs)
+const inspecting = ref(false)
+const styleOpen = ref(false)
+
+function toggleInspect() {
+  inspecting.value = !inspecting.value
+  if (inspecting.value) styleOpen.value = true
+}
 
 // Font cache buster: rewrites every @font-face with cache-busted urls
 // and waits for the fresh files - no page reload
@@ -125,6 +144,7 @@ const materialRoutes = computed(() =>
 .spacer {
   flex: 1;
 }
+.inspect-toggle,
 .font-refresh {
   display: grid;
   place-items: center;
@@ -135,8 +155,14 @@ const materialRoutes = computed(() =>
   color: var(--c-text-muted);
   cursor: pointer;
 }
+.inspect-toggle:hover,
 .font-refresh:hover {
   color: #fff;
+}
+.inspect-toggle.on {
+  color: var(--c-bg);
+  background: var(--c-accent);
+  border-color: var(--c-accent);
 }
 .font-refresh:disabled {
   cursor: wait;

@@ -39,7 +39,7 @@ manual and `DESIGN.md` from `host-template/`.
         ├── router/        # globs the HOST's /src/pages via leading-slash globs
         ├── templates/     # starter formats - previews only on /templates, never routed
         ├── views/         # Home (material list) + Templates (gallery + create form)
-        ├── components/    # StageZoom / TemplatePreview / TokenPanel / ExportBar / VueLogo
+        ├── components/    # StageZoom / ElementInspector / TemplatePreview / TokenPanel / ExportBar / VueLogo
         ├── utils/         # plain helpers (export.ts, fonts.ts)
         └── styles/base.css  # font + reset + print rules (imported by the lib entry)
 ```
@@ -111,12 +111,25 @@ html-to-image (PNG, `pixelRatio` = scale) or embeds the raster into a jsPDF page
 sized from the logical dimensions (96dpi base). Browser print injects a matching
 `@page` and relies on the print rules in `base.css` to hide the workbench UI.
 
-### Token write-back (`GET/PUT /__tokens`)
+### Token write-back (`GET/PUT /__tokens[?page=Name]`)
 
-In `src/vite-plugin.ts` (dev-only): paths resolve against the host root. GET
-parses the CSS variables inside the `AUTO:TOKENS` markers of the host's
-`src/styles/tokens.css` (created with defaults if missing); PUT validates,
-merges with on-disk values, and rewrites only the block between the markers.
+In `src/vite-plugin.mjs` (dev-only): with `?page=Name` the API targets that
+page's own `AUTO:TOKENS` block (pages created from Templates carry one, scoped
+to `[data-export]` — a per-page palette copy); without a page, or when the page
+has no block, it falls back to the host's `src/styles/tokens.css`. GET parses
+the block; PUT validates, merges with on-disk values, and rewrites only the
+block between the markers.
+
+### Element overrides (`PUT /__element-styles`)
+
+The Styles panel's Element tab edits preview as inline overrides and then
+persist here: `{ page, selectorPath, props }` merges declarations into the
+page's `AUTO:OVERRIDES` block (a scoped `<style>` section appended on first
+use). The selectorPath is computed client-side as the element's full CSS path
+(classes + nth-of-type disambiguation), so persisted rules keep working across
+reloads. Server-side validation whitelists selector characters (no `< ; { } @`)
+and value characters, keeping the CSS text structurally safe; `null` prop values
+remove declarations and empty selectors drop out of the block.
 
 Validation rejects bad keys, non-strings, empty or >=64-char values, and any
 value containing `; { }` (which would corrupt the stylesheet structure) — with

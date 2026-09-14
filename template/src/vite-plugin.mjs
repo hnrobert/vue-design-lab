@@ -29,12 +29,11 @@ import { fileURLToPath } from 'node:url'
 const START = '/* AUTO:TOKENS:START */'
 const END = '/* AUTO:TOKENS:END */'
 
-const DEFAULT_TOKENS = `/* Your design tokens. The panel edits only the block between the markers;
-   anything outside is yours and is never rewritten. */
+// Element overrides saved from the Styles panel live between these markers
+const OVERR_START = '/* AUTO:OVERRIDES:START */'
+const OVERR_END = '/* AUTO:OVERRIDES:END */'
 
-${START}
-:root {
-  --c-bg: #12151C;
+const PALETTE_VARS = `  --c-bg: #12151C;
   --c-surface: #1B2029;
   --c-accent: #42D392;
   --c-accent-soft: #8CE6BD;
@@ -44,10 +43,33 @@ ${START}
   --c-text-muted: #A8A8A8;
   --fs-title: 86px;
   --fs-body: 38px;
-  --radius-card: 16px;
+  --radius-card: 16px;`
+
+const DEFAULT_TOKENS = `/* Your design tokens. The panel edits only the block between the markers;
+   anything outside is yours and is never rewritten. */
+
+${START}
+:root {
+${PALETTE_VARS}
 }
 ${END}
 `
+
+/** Page-local tokens appended to every generated page: a copy of the default
+ *  palette scoped to the page root, so each material owns its own set. */
+function withPageTokens(src) {
+  return `${src}
+<style scoped>
+/* Page tokens: the panel edits only the block between the markers; they
+   override the host-wide src/styles/tokens.css for this page. */
+${START}
+[data-export] {
+${PALETTE_VARS}
+}
+${END}
+</style>
+`
+}
 
 /** Parse the CSS variables inside the auto block of tokens.css */
 function readTokens(tokensFile) {
@@ -90,6 +112,82 @@ function validateTokens(vars) {
 /** mm -> px at the given DPI */
 function mmToPx(mm, dpi) {
   return Math.round((mm / 25.4) * dpi)
+}
+
+/** ---------- element overrides (AUTO:OVERRIDES block) ---------- */
+
+/** Selector whitelist: letters/digits and the combinators/pseudo syntax the
+ *  client-side path builder produces; no < { } ; @ so nothing can break out
+ *  of the style block */
+function validateSelector(sel) {
+  if (typeof sel !== 'string' || sel.length > 400) throw new Error('selector must be 1-400 chars')
+  const s = sel.trim()
+  if (!/^[A-Za-z0-9_.:,>()[\]="'*# -]+$/.test(s)) throw new Error('selector contains illegal characters')
+  return s
+}
+
+/** A declaration value: no < ; { } newline (would break the CSS text) */
+function validateDecl(prop, value) {
+  if (!/^[-a-zA-Z0-9_]+$/.test(prop)) throw new Error(`invalid property name: ${prop}`)
+  if (value === null) return null // removal marker
+  if (typeof value !== 'string' || value.length === 0 || value.length > 100) {
+    throw new Error(`${prop}: value must be 1-100 chars`)
+  }
+  if (/[<;{}\n]/.test(value)) throw new Error(`${prop}: value must not contain < ; { }`)
+  return value.trim()
+}
+
+/** Parse the CSS between the OVERRIDES markers into selector -> {prop: value} */
+function parseOverrides(css) {
+  const rules = new Map()
+  for (const m of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const sel = m[1].trim()
+    const props = {}
+    for (const d of m[2].matchAll(/([-a-zA-Z0-9_]+)\s*:\s*([^;]+);/g)) props[d[1]] = d[2].trim()
+    if (sel && Object.keys(props).length) rules.set(sel, props)
+  }
+  return rules
+}
+
+function serializeOverrides(rules) {
+  let out = ''
+  for (const [sel, props] of rules) {
+    out += `${sel} {\n`
+    for (const [p, v] of Object.entries(props)) out += `  ${p}: ${v};\n`
+    out += '}\n'
+  }
+  return out
+}
+
+/** Merge incoming props for one selector into the page's OVERRIDES block,
+ *  creating the <style> section on first use. null values remove declarations;
+ *  selectors left empty drop out entirely. */
+function upsertElementOverrides(file, selectorPath, props) {
+  let src = readFileSync(file, 'utf8')
+  const merged = src.includes(OVERR_START)
+    ? parseOverrides(src.slice(src.indexOf(OVERR_START) + OVERR_START.length, src.indexOf(OVERR_END)))
+    : new Map()
+
+  const incoming = {}
+  for (const [p, v] of Object.entries(props ?? {})) incoming[p] = validateDecl(p, v)
+
+  const existing = merged.get(selectorPath) ?? {}
+  for (const [p, v] of Object.entries(incoming)) {
+    if (v === null) delete existing[p]
+    else existing[p] = v
+  }
+  if (Object.keys(existing).length) merged.set(selectorPath, existing)
+  else merged.delete(selectorPath)
+
+  const body = serializeOverrides(merged)
+  if (src.includes(OVERR_START)) {
+    const s = src.indexOf(OVERR_START)
+    const e = src.indexOf(OVERR_END)
+    src = src.slice(0, s) + OVERR_START + '\n' + body + src.slice(e)
+  } else {
+    src += `\n<style scoped>\n/* Element overrides saved from the Styles panel; hand edits welcome */\n${OVERR_START}\n${body}${OVERR_END}\n</style>\n`
+  }
+  writeFileSync(file, src)
 }
 
 /** Blank starter page at an explicit canvas size */
@@ -163,6 +261,26 @@ export function lab() {
   // starter formats ship with this package (src/templates next to this file)
   const templatesDir = fileURLToPath(new URL('./templates', import.meta.url))
 
+  /** Resolve a page's file by route name (either shape); null when absent */
+  function pageFile(name) {
+    if (!/^[A-Z][A-Za-z0-9]{0,39}$/.test(String(name))) return null
+    for (const f of [resolve(pagesDir, `${name}.vue`), resolve(pagesDir, String(name), 'index.vue')]) {
+      if (existsSync(f)) return f
+    }
+    return null
+  }
+
+  /** Pick the tokens file for a request: the page's own AUTO block when it
+   *  carries one, otherwise the host-wide tokens.css. Returns scope info. */
+  function resolveTokensTarget(page) {
+    const file = page ? pageFile(page) : null
+    if (file) {
+      const css = readFileSync(file, 'utf8')
+      if (css.includes(START) && css.includes(END)) return { file, scope: 'page', page }
+    }
+    return { file: tokensFile, scope: 'global', page: null }
+  }
+
   return {
     name: 'vue-design-lab',
     apply: 'serve',
@@ -181,11 +299,13 @@ export function lab() {
       }
     },
     configureServer(server) {
-      // ---------- token API ----------
+      // ---------- token API (per-page AUTO block when present, else global) ----------
       server.middlewares.use('/__tokens', (req, res) => {
+        const page = new URL(req.url ?? '/', 'http://lab').searchParams.get('page')
         if (req.method === 'GET') {
+          const target = resolveTokensTarget(page)
           res.setHeader('content-type', 'application/json')
-          res.end(JSON.stringify({ vars: readTokens(tokensFile) }))
+          res.end(JSON.stringify({ vars: readTokens(target.file), scope: target.scope, page: target.page }))
           return
         }
         if (req.method === 'PUT') {
@@ -194,9 +314,10 @@ export function lab() {
           req.on('end', () => {
             try {
               const { vars } = JSON.parse(body)
+              const target = resolveTokensTarget(page)
               // Merge with on-disk values: the panel only sends the keys it knows,
               // a full replacement would clobber tokens added elsewhere
-              writeTokens(tokensFile, { ...readTokens(tokensFile), ...validateTokens(vars) })
+              writeTokens(target.file, { ...readTokens(target.file), ...validateTokens(vars) })
               res.statusCode = 200
               res.end('ok')
             } catch (err) {
@@ -252,11 +373,36 @@ export function lab() {
             }
             const target = relative(root, file)
             mkdirSync(dirname(file), { recursive: true })
-            writeFileSync(file, createSource(templatesDir, String(template), pxW, pxH, target))
+            writeFileSync(file, withPageTokens(createSource(templatesDir, String(template), pxW, pxH, target)))
             res.setHeader('content-type', 'application/json')
             res.end(JSON.stringify({ route: `/${name}` }))
           } catch (err) {
             console.warn('[pages] POST rejected:', String(err))
+            res.statusCode = 400
+            res.end(err instanceof Error ? err.message : String(err))
+          }
+        })
+      })
+
+      // ---------- element overrides (Element tab write-back) ----------
+      server.middlewares.use('/__element-styles', (req, res) => {
+        if (req.method !== 'PUT') {
+          res.statusCode = 405
+          res.end()
+          return
+        }
+        let body = ''
+        req.on('data', (c) => (body += c))
+        req.on('end', () => {
+          try {
+            const { page, selectorPath, props } = JSON.parse(body)
+            const file = pageFile(page)
+            if (!file) throw new Error(`unknown page: ${page}`)
+            upsertElementOverrides(file, validateSelector(selectorPath), props)
+            res.statusCode = 200
+            res.end('ok')
+          } catch (err) {
+            console.warn('[element-styles] PUT rejected:', String(err))
             res.statusCode = 400
             res.end(err instanceof Error ? err.message : String(err))
           }

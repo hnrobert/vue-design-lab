@@ -30,7 +30,7 @@ body {
   .topbar,
   .export-bar,
   .zoom-bar,
-  .panel,
+  .style-panel,
   .fab {
     display: none !important;
   }
