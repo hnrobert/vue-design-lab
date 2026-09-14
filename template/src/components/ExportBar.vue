@@ -8,15 +8,34 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { findExportRoot, exportPNG, exportPDF, printPage } from '../utils/export'
 
 const route = useRoute()
 
-// Depends on route.fullPath: re-probe the export root when switching material pages
+// findExportRoot reads the DOM, but right after a route change the page
+// component may not be mounted yet - the label would cache a stale
+// "data-export missing". A post-render tick re-runs the probe once Vue has
+// patched the RouterView, on first load and on every navigation.
+const domTick = ref(0)
+
+onMounted(async () => {
+  await nextTick()
+  domTick.value++
+})
+
+watch(
+  () => route.fullPath,
+  async () => {
+    await nextTick()
+    domTick.value++
+  },
+)
+
 const exportMeta = computed(() => {
   void route.fullPath
+  void domTick.value
   return findExportRoot()
 })
 

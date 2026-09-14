@@ -44,7 +44,9 @@
       </StageZoom>
     </main>
 
-    <ExportBar v-if="route.name !== 'home' && route.name !== 'Templates'" />
+    <!-- route.name is undefined while the initial navigation resolves; hiding
+         the bar then avoids a pre-route "data-export missing" flash -->
+    <ExportBar v-if="route.name && route.name !== 'home' && route.name !== 'Templates'" />
   </div>
 </template>
 
