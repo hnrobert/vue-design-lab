@@ -51,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ExportBar from './components/ExportBar.vue'
 import StageZoom from './components/StageZoom.vue'

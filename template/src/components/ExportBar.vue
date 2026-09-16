@@ -2,8 +2,8 @@
   <div class="export-bar">
     <span class="meta">{{ metaLabel }}</span>
     <button :disabled="!hasTarget" @click="exportPNG(2)">Export PNG (2x)</button>
-    <button :disabled="!hasTarget" @click="exportPDF(2)">Export PDF</button>
-    <button :disabled="!hasTarget" @click="printPage">Print / Save as PDF</button>
+    <button :disabled="!hasTarget" @click="exportPDF(2)">Export PDF (raster)</button>
+    <button :disabled="!hasTarget" @click="vectorPDF" title="Headless Chrome print engine: vector text, vector shapes, one click, no dialog">Export PDF (vector)</button>
   </div>
 </template>
 
@@ -11,6 +11,13 @@
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { findExportRoot, exportPNG, exportPDF, printPage } from '../utils/export'
+
+/** One-click vector PDF via the dev middleware's headless Chrome */
+function vectorPDF() {
+  const name = String(route.name ?? '')
+  if (!name) return
+  window.location.href = `/__vector-pdf?page=${encodeURIComponent(name)}`
+}
 
 const route = useRoute()
 

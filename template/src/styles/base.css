@@ -27,6 +27,18 @@ body {
 
 /* When printing, keep only the material itself */
 @media print {
+  /* CRITICAL: force exact color rendering — without this Chrome strips
+     ALL background colors, box-shadows, and borders in print output */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  html,
+  body {
+    margin: 0 !important;
+    padding: 0 !important;
+    background: none !important;
+  }
   .topbar,
   .export-bar,
   .zoom-bar,
@@ -37,6 +49,7 @@ body {
   .stage {
     padding: 0 !important;
     overflow: visible !important;
+    position: static !important;
   }
   /* undo the on-screen pan/zoom so print output is 1:1;
      background: none also drops the transparency checkerboard in print */
@@ -46,8 +59,16 @@ body {
     overflow: visible !important;
     transform: none !important;
     background: none !important;
+    width: auto !important;
+    max-width: none !important;
   }
-  body {
-    background: none !important;
+  /* the material root keeps its own overflow + position so absolute
+     decorations (mosaics, cursor, decorations) stay correctly placed */
+  [data-export] {
+    overflow: hidden !important;
+    position: relative !important;
+    margin: 0 !important;
+    page-break-after: avoid;
+    page-break-inside: avoid;
   }
 }

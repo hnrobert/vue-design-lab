@@ -102,14 +102,31 @@ export async function exportPDF(scale = 2): Promise<void> {
   pdf.save(`export-${Date.now()}.pdf`)
 }
 
-/** Browser print: injects a page-sized @page; base.css hides the workbench UI when printing */
+/** Browser print (vector PDF): injects a page-sized @page sized in inches
+ *  (universally reliable), plus print-color-adjust: exact to force backgrounds.
+ *  base.css hides the workbench UI and resets the pan/zoom transforms. */
 export function printPage(): void {
   const meta = findExportRoot()
   if (!meta) return
   document.getElementById('print-page-size')?.remove()
   const style = document.createElement('style')
   style.id = 'print-page-size'
-  style.textContent = `@page { size: ${meta.w}px ${meta.h}px; margin: 0; }`
+  const wIn = (meta.w / 96).toFixed(4)
+  const hIn = (meta.h / 96).toFixed(4)
+  style.textContent = `
+    @page { size: ${wIn}in ${hIn}in; margin: 0; }
+    /* belt-and-suspenders with base.css: Chrome strips backgrounds without this */
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    html, body { margin: 0 !important; padding: 0 !important; }
+  `
   document.head.appendChild(style)
   window.print()
+  // cleanup after the dialog closes so the @page does not affect screen styles
+  const cleanup = () => {
+    style.remove()
+    window.removeEventListener('afterprint', cleanup)
+  }
+  window.addEventListener('afterprint', cleanup)
+  // Safari does not fire afterprint — also remove on a timer
+  setTimeout(() => style.remove(), 60_000)
 }

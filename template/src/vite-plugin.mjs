@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, relative, resolve } from 'node:path'
+import { dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /**
@@ -496,6 +496,91 @@ export function lab() {
             res.end(err instanceof Error ? err.message : String(err))
           }
         })
+      })
+
+      // ---------- vector PDF export (puppeteer-core + headless Chrome) ----------
+      // GET /__vector-pdf?page=Name — launches the system Chrome headless,
+      // navigates to the material page, calls page.pdf() with the exact
+      // material dimensions. Output is true vector: selectable text,
+      // vector shapes, embedded images — no dialog, one click.
+      server.middlewares.use('/__vector-pdf', async (req, res) => {
+        const u = new URL(req.url ?? '/', 'http://lab')
+        const pageName = u.searchParams.get('page')
+        if (req.method !== 'GET' || !pageName) {
+          res.statusCode = 400
+          res.end('usage: GET /__vector-pdf?page=PageName')
+          return
+        }
+        const file = pageFile(pageName)
+        if (!file) {
+          res.statusCode = 400
+          res.end(`unknown page: ${pageName}`)
+          return
+        }
+        // find a Chrome/Chromium executable
+        const chromePaths = [
+          '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+          '/Applications/Chromium.app/Contents/MacOS/Chromium',
+          '/usr/bin/google-chrome',
+          '/usr/bin/chromium-browser',
+          '/usr/bin/chromium',
+          '/snap/bin/chromium',
+        ]
+        const chromePath = chromePaths.find((p) => existsSync(p))
+        if (!chromePath) {
+          res.statusCode = 503
+          res.end('No Chrome/Chromium found on this machine')
+          return
+        }
+        // read the material's declared canvas size from the source file
+        const src = readFileSync(file, 'utf8')
+        const wm = /data-export-w="(\d+)"/.exec(src)
+        const hm = /data-export-h="(\d+)"/.exec(src)
+        if (!wm || !hm) {
+          res.statusCode = 400
+          res.end(`page ${pageName} has no data-export dimensions`)
+          return
+        }
+        const wPx = Number(wm[1])
+        const hPx = Number(hm[1])
+        const wIn = (wPx / 96).toFixed(4)
+        const hIn = (hPx / 96).toFixed(4)
+        const port = server.config.server.port ?? 5173
+        // no ?print=1 needed: page.pdf() uses print media automatically,
+        // and the @media print rules in base.css hide the workbench UI
+        const url = `http://localhost:${port}/${pageName}`
+
+        console.log(`[vector-pdf] ${pageName}: ${wPx}x${hPx}px (${wIn}x${hIn}in)`)
+        try {
+          const { default: puppeteer } = await import('puppeteer-core')
+          const browser = await puppeteer.launch({
+            executablePath: chromePath,
+            headless: true,
+            args: ['--no-sandbox', '--disable-gpu', `--font-render-hinting=none`],
+          })
+          const page = await browser.newPage()
+          await page.goto(url, { waitUntil: 'networkidle0', timeout: 20_000 })
+          // give fonts + images a moment to settle
+          await page.evaluate(() => document.fonts.ready)
+          await new Promise((r) => setTimeout(r, 500))
+          const pdf = await page.pdf({
+            width: `${wIn}in`,
+            height: `${hIn}in`,
+            printBackground: true,
+            margin: { top: 0, right: 0, bottom: 0, left: 0 },
+            preferCSSPageSize: false,
+            displayHeaderFooter: false,  // kill the URL/date header
+          })
+          await browser.close()
+          res.setHeader('content-type', 'application/pdf')
+          res.setHeader('content-disposition', `attachment; filename="${pageName}.pdf"`)
+          res.end(pdf)
+          console.log(`[vector-pdf] ${pageName}.pdf generated (${(pdf.length / 1048576).toFixed(2)} MB)`)
+        } catch (err) {
+          console.warn('[vector-pdf] failed:', String(err))
+          res.statusCode = 500
+          res.end(`Vector PDF failed: ${err instanceof Error ? err.message : String(err)}`)
+        }
       })
     },
   }
