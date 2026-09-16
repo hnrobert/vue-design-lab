@@ -1,4 +1,4 @@
-import { toPng } from 'html-to-image'
+import { toJpeg, toPng } from 'html-to-image'
 import { jsPDF } from 'jspdf'
 
 /** Self-declared by the page root element: data-export + data-export-w/h (px) */
@@ -57,6 +57,18 @@ async function renderPng(w: number, h: number, scale: number): Promise<string> {
   }
 }
 
+/** JPEG render for the PDF path: jsPDF decodes embedded PNGs to raw RGBA
+ *  (a 2x rollup exploded to 208MB), while JPEG embeds stay compressed. */
+async function renderJpeg(w: number, h: number, scale: number, quality = 0.92): Promise<string> {
+  const { el } = findExportRoot()!
+  const restore = await inlineImages(el)
+  try {
+    return await toJpeg(el, { pixelRatio: scale, width: w, height: h, quality })
+  } finally {
+    restore()
+  }
+}
+
 function triggerDownload(url: string, filename: string) {
   const a = document.createElement('a')
   a.href = url
@@ -72,11 +84,13 @@ export async function exportPNG(scale = 2): Promise<void> {
   triggerDownload(url, `export-${Date.now()}.png`)
 }
 
-/** Export PDF: page sized from logical dimensions (px/96dpi -> inches), raster image embedded */
+/** Export PDF: page sized from logical dimensions (px/96dpi -> inches);
+ *  embeds a JPEG (quality 0.92, visually lossless at 2x = 192dpi) - a PNG
+ *  embed would decode to raw RGBA inside jsPDF and explode the file size */
 export async function exportPDF(scale = 2): Promise<void> {
   const meta = findExportRoot()
   if (!meta) return
-  const url = await renderPng(meta.w, meta.h, scale)
+  const url = await renderJpeg(meta.w, meta.h, scale)
   const wIn = meta.w / 96
   const hIn = meta.h / 96
   const pdf = new jsPDF({
@@ -84,7 +98,7 @@ export async function exportPDF(scale = 2): Promise<void> {
     unit: 'in',
     format: [wIn, hIn],
   })
-  pdf.addImage(url, 'PNG', 0, 0, wIn, hIn)
+  pdf.addImage(url, 'JPEG', 0, 0, wIn, hIn)
   pdf.save(`export-${Date.now()}.pdf`)
 }
 
