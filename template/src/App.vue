@@ -1,6 +1,6 @@
 <template>
   <div class="shell" :class="{ 'inspect-open': inspecting }">
-    <header class="topbar">
+    <header class="shell-topbar">
       <RouterLink class="brand" to="/">
         <VueLogo :size="20" inner="var(--c-bg)" />
         <span class="brand-name">Vue Design Lab</span>
@@ -51,7 +51,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ExportBar from './components/ExportBar.vue'
 import StageZoom from './components/StageZoom.vue'
@@ -101,7 +101,7 @@ const materialRoutes = computed(() =>
   display: flex;
   flex-direction: column;
 }
-.topbar {
+.shell-topbar {
   display: flex;
   align-items: center;
   gap: 18px;
@@ -182,7 +182,7 @@ const materialRoutes = computed(() =>
 }
 .stage {
   flex: 1;
-  /* pan/zoom viewport owns this area (see StageZoom); centering happens there */
+  /* pan/zoom viewport owns this area (see StageZoom); center via that */
   position: relative;
   overflow: hidden;
 }
