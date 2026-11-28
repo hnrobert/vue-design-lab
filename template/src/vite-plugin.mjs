@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-import { dirname, join, relative, resolve } from 'node:path'
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 /**
@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url'
  * - GET/PUT /__tokens - read/write the host's src/styles/tokens.css (AUTO block only)
  * - POST /__pages    - materialize a starter into the host's src/pages/
  * - optimizeDeps exclusion so this source-form package never gets pre-bundled
+ * - a `resolveId` guard for sub-block requests that only a browser-cached
+ *   install can still send: reload that tab once instead of ENOENT
  *
  * This file is plain JavaScript on purpose: vite.config imports run through
  * Node's native loader, which refuses to type-strip .ts files under
@@ -303,12 +305,76 @@ function createSource(templatesDir, templateId, w, h, target) {
   return `<!-- Created from template ${templateId} -> ${target} (${w}x${h}px) -->\n${src}`
 }
 
+/** ---------- sub-block requests for an install that is gone ---------- */
+
+// Hosts compile this package straight from node_modules, where Vite serves it
+// like an npm dep: `?v=<hash>` and `Cache-Control: immutable`. A tab therefore
+// keeps e.g. `.../App.vue?v=abc` for good, yet still requests that module's
+// style block (`.../App.vue?vue&type=style...`, no version hash) on every load.
+// When this project no longer has that install - a tab left over from another
+// project that used the same port, or from before a reinstall - that request
+// names a path that does not exist. vite:resolve passes on it, plugin-vue
+// hands every `?vue` id back untouched, and the root-relative url is read as
+// a path from the filesystem root:
+//   ENOENT: no such file or directory, open '/node_modules/.pnpm/vue-design-lab@.../src/App.vue'
+const STALE_MODULE_ID = '\0vue-design-lab:stale-module'
+// `C:\` or `C:/`: such a path is unambiguous, unlike a POSIX one that starts with `/`
+const DRIVE_PREFIX = /^[A-Za-z]:[\\/]/
+
+/**
+ * JS served in place of such a module. The server cannot expire what the
+ * browser cached, so the tab reloads once per server run and re-fetches its
+ * entry chain (index.html and src/main.ts are `no-cache`). A tab that lands
+ * here again right after is genuinely broken and is told so instead of looping.
+ * `run` tells server runs apart in the tab's sessionStorage.
+ */
+function staleModule(run) {
+  return `const key = 'vue-design-lab:stale-module:${run}'
+// one reload per page, even when several sub-blocks are stale
+const state = (globalThis.__viteVueDesignLabStale ??= { reloading: false })
+if (!state.reloading) {
+  let first = false
+  try {
+    first = sessionStorage.getItem(key) === null
+    sessionStorage.setItem(key, '1')
+  } catch {
+    // storage blocked (sandboxed preview): fall through to the error
+  }
+  if (first) {
+    state.reloading = true
+    location.reload()
+  } else {
+    throw new Error(
+      '[vue-design-lab] This tab runs a cached copy of vue-design-lab that this dev server does not have. ' +
+        'Reload the page, or clear the site data for this origin, to pick up the current install.',
+    )
+  }
+}
+export default {}
+`
+}
+
+/**
+ * A missing file whose package directory (`vue-design-lab`) is missing too:
+ * the install it belonged to is gone. That tells it apart from a file removed
+ * from an install that is still here, which is a real error. Installs reached
+ * through a link under another name are not recognized and stay with Vite.
+ */
+function isGoneLabInstall(file) {
+  if (existsSync(file)) return false
+  const posix = file.split(sep).join('/')
+  const pkg = posix.lastIndexOf('/vue-design-lab/')
+  return pkg !== -1 && !existsSync(posix.slice(0, pkg + '/vue-design-lab'.length))
+}
+
 export function lab() {
   let root = process.cwd()
   let tokensFile = ''
   let pagesDir = ''
   // starter formats ship with this package (src/templates next to this file)
   const templatesDir = fileURLToPath(new URL('./templates', import.meta.url))
+  // fresh on every server start, so a restarted server may reload a tab again
+  const run = Math.random().toString(36).slice(2)
 
   /** Resolve a page's file by route name (either shape); null when absent */
   function pageFile(name) {
@@ -352,6 +418,35 @@ export function lab() {
         mkdirSync(dirname(tokensFile), { recursive: true })
         writeFileSync(tokensFile, DEFAULT_TOKENS)
       }
+    },
+    // `order: 'pre'` puts this ahead of plugin-vue, which answers every `?vue`
+    // id with the id itself. Whatever is on disk stays with vite:resolve.
+    resolveId: {
+      order: 'pre',
+      handler(id) {
+        const q = id.indexOf('?')
+        if (q < 0 || !new URLSearchParams(id.slice(q + 1)).has('vue')) return
+        let file = id.slice(0, q)
+        // `/@fs/` urls arrive unwrapped from the browser, but not from this.resolve();
+        // the url form drops the leading slash of the path (as vite's fsPathFromId
+        // adds it back)
+        if (file.startsWith('/@fs/')) {
+          file = file.slice('/@fs/'.length)
+          if (file[0] !== '/' && !DRIVE_PREFIX.test(file)) file = `/${file}`
+        }
+        if (!isAbsolute(file)) return
+        // A POSIX path can be read two ways: as the path itself (an unwrapped
+        // /@fs/ url) or as the root-relative url the browser sends. Only when
+        // every reading is a lab install that is gone is the request stale.
+        // A file missing beside its package is a real error, as is anything
+        // not from this package - Vite reports both as usual.
+        const readings = DRIVE_PREFIX.test(file) || file.startsWith('//') ? [file] : [file, join(root, file.slice(1))]
+        if (readings.some((path) => !isGoneLabInstall(path))) return
+        return STALE_MODULE_ID
+      },
+    },
+    load(id) {
+      if (id === STALE_MODULE_ID) return staleModule(run)
     },
     configureServer(server) {
       // ---------- token API (per-page AUTO block when present, else global) ----------

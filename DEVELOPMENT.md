@@ -239,3 +239,16 @@ the new version.
   root), so a long-running server keeps serving the OLD middleware — new API
   routes 404 with an empty body. After changing the plugin, restart the host's
   `pnpm dev`; the client surfaces this as `Write failed: 404 (no body)`.
+- **A browser tab can outlive an install of the package.** Hosts compile it
+  straight from `node_modules`, so Vite serves its `.vue` files like npm deps
+  (`?v=<hash>`, `Cache-Control: immutable`). The browser keeps
+  `.../App.vue?v=abc` for good but still requests the module's `<style>`
+  sub-block (`.../App.vue?vue&type=style...`, no version hash) on every load. A
+  tab left over from another project on the same dev-server port, or from
+  before a reinstall, therefore asks for a path that does not exist here.
+  `vite:resolve` passes on it and plugin-vue returns every `?vue` id untouched,
+  so the root-relative URL is read from the filesystem root:
+  `ENOENT ... open '/node_modules/.pnpm/vue-design-lab@.../src/App.vue'`.
+  `lab()` now answers such a request with a module that reloads the tab once
+  per server run. Whatever exists on disk, and whatever is genuinely missing
+  from an install that is still there, stays with Vite.
