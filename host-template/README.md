@@ -33,8 +33,8 @@ Or just create one by hand with the canvas declared on the root element:
 
 Whatever route you take: typeset with the tokens from `src/styles/tokens.css`
 (`var(--c-accent)` and friends) instead of hard-coded colors — that is what lets the
-token panel drive your page. The bottom export bar produces PNG (2x), PDF, or browser
-print.
+token panel drive your page. The Export button in the bottom bar produces a PNG or
+a PDF.
 
 If fonts ever look stale after edits, hit the circular-arrows button in the top bar:
 it re-downloads every @font-face with cache-busted URLs, no page reload needed.
@@ -84,6 +84,9 @@ the result matches the bundled starters.
 
 ## Export notes
 
-- PNG defaults to 2x (~192 DPI); raise `scale` in the package's ExportBar to go higher
+- One Export button opens a two-column menu, every option listed at once: **PNG**
+  with 0.5x / 1x / 2x / 4x (the output pixel size is shown; 2x is ~192 DPI), **PDF**
+  with a 1x / 2x / 4x raster and the vector export (selectable text, rendered by
+  the dev server's headless Chrome)
 - PDF pages are sized from the logical dimensions (96dpi base) with a raster embed
 - Browser print injects a matching `@page`; the workbench UI hides itself automatically
