@@ -73,20 +73,22 @@ function contentSize(): { w: number; h: number } {
   return canvas ? { w: canvas.offsetWidth, h: canvas.offsetHeight } : { w: 0, h: 0 }
 }
 
-/** Keep the scaled material overlapping the viewport: center when smaller, clamp when larger.
- *  Vertical centering subtracts the fixed bottom export bar (~53px) so the
- *  material reads centered in the VISIBLE area, not the full viewport. */
+/** The stage as the user sees it: the viewport minus the fixed bottom export
+ *  bar (~53px). Material is centered and panned within this visible area. */
 const BOTTOM_CLEARANCE = 60
 
+/** Keep every edge of the material reachable: panning stops once an edge
+ *  reaches the center of the stage, from either side. So an edge can travel
+ *  past the stage border up to its middle - the bottom edge in particular
+ *  clears the export bar instead of getting stuck underneath it. */
 function clampPan() {
   const vp = viewportEl.value
   if (!vp) return
   const { w, h } = contentSize()
-  const sw = w * scale.value
-  const sh = h * scale.value
-  const vh = vp.clientHeight - BOTTOM_CLEARANCE
-  tx.value = sw <= vp.clientWidth ? (vp.clientWidth - sw) / 2 : Math.min(0, Math.max(vp.clientWidth - sw, tx.value))
-  ty.value = sh <= vh ? (vh - sh) / 2 : Math.min(0, Math.max(vp.clientHeight - sh, ty.value))
+  const midX = vp.clientWidth / 2
+  const midY = (vp.clientHeight - BOTTOM_CLEARANCE) / 2
+  tx.value = Math.min(midX, Math.max(midX - w * scale.value, tx.value))
+  ty.value = Math.min(midY, Math.max(midY - h * scale.value, ty.value))
 }
 
 /** Zoom to an absolute scale keeping the given viewport point stationary */

@@ -70,6 +70,8 @@ The stage is a pan/zoom viewport: it opens with the whole material fitted to vie
 
 - Pinch (trackpad) or ctrl/cmd + wheel to zoom, anchored at the cursor
 - Two-finger scroll or drag to pan
+- Panning stops once an edge of the material reaches the center of the
+  stage: every edge, the bottom included, can be brought well into view
 - The pill at the bottom left: zoom out, click the percentage to reset to 100%,
   zoom in, or hit Fit
 - Every page change re-fits; zooming never affects export — output is always 1:1
